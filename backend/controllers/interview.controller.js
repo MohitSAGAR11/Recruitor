@@ -121,10 +121,51 @@ function generateFallbackQuestions(candidate, jd, scores) {
 }
 
 /**
+ * Builds a slim candidate summary for the AI prompt.
+ * Sending only key fields (not the entire parsed object) reduces token count
+ * and cuts inference time significantly on free-tier models.
+ */
+function buildSlimPayload(candidate, jd, scores) {
+  return JSON.stringify({
+    candidate: {
+      name: candidate.name,
+      currentRole: candidate.currentRole,
+      totalYearsExperience: candidate.totalYearsExperience,
+      skills: (candidate.skills || []).slice(0, 12), // top 12 skills is enough
+      workHistory: (candidate.workHistory || []).slice(0, 3).map((w) => ({
+        role: w.role,
+        company: w.company,
+        years: w.years,
+        // Only first 2 highlights per role to save tokens
+        highlights: (w.highlights || []).slice(0, 2),
+      })),
+      careerTrajectory: candidate.careerTrajectory,
+      nonTraditionalBackground: candidate.nonTraditionalBackground,
+      nonTraditionalReason: candidate.nonTraditionalReason,
+    },
+    jd: {
+      title: jd.title,
+      mustHave: jd.mustHave,
+      niceToHave: (jd.niceToHave || []).slice(0, 5),
+      hardSkills: (jd.hardSkills || []).slice(0, 8),
+      experienceLevel: jd.experienceLevel,
+    },
+    scores: {
+      overallScore: scores?.overallScore,
+      missingMustHave: scores?.missingMustHave,
+      interviewFocus: scores?.interviewFocus,
+    },
+  });
+}
+
+/**
  * POST /api/interview/questions
  * Body: { candidate: parsedCV, jd: parsedJD, scores: scoreData }
  */
 export async function generateInterviewQuestions(req, res) {
+  // 120s server-side timeout — prevents silent hangs if the model is very slow
+  req.setTimeout(120000);
+
   const { candidate, jd, scores } = req.body;
 
   if (!candidate || !jd) {
@@ -137,14 +178,15 @@ export async function generateInterviewQuestions(req, res) {
 
   let questions;
   try {
-    const payload = JSON.stringify({ candidate, jd, scores: scores || {} });
-    questions = await callAI(INTERVIEW_QUESTIONS_PROMPT, payload);
+    // Use slimmed payload + reduced max_tokens for faster inference
+    const payload = buildSlimPayload(candidate, jd, scores);
+    questions = await callAI(INTERVIEW_QUESTIONS_PROMPT, payload, { maxTokens: 800 });
 
     if (!questions || typeof questions !== 'object') {
       throw new Error('AI returned invalid formatted response');
     }
   } catch (err) {
-    console.warn('[generateInterviewQuestions] AI call failed, falling back to programmatic questions generator:', err.message);
+    console.warn('[generateInterviewQuestions] AI call failed, using fallback generator:', err.message);
     questions = generateFallbackQuestions(candidate, jd, scores);
   }
 

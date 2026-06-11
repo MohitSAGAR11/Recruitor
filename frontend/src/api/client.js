@@ -56,7 +56,8 @@ export async function checkBias(shortlist, allCandidates) {
 
 /** POST /api/interview/questions */
 export async function getInterviewQuestions(candidate, jd, scores) {
-  return api.post('/interview/questions', { candidate, jd, scores });
+  // 120s — handles worst-case free-tier model latency + fallback generation time
+  return api.post('/interview/questions', { candidate, jd, scores }, { timeout: 120000 });
 }
 
 export default api;
