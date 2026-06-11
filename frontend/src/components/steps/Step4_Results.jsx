@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   SlidersHorizontal,
   ChevronDown,
@@ -250,8 +251,8 @@ export default function Step4_Results() {
                 )}
               </button>
 
-              {/* ── Dropdown panel — fixed so overflow:hidden never clips it ── */}
-              {filterOpen && (
+              {/* Dropdown — rendered via portal to escape backdropFilter stacking context */}
+              {filterOpen && createPortal(
                 <div
                   ref={dropdownRef}
                   className="animate-fade-in"
@@ -415,7 +416,7 @@ export default function Step4_Results() {
                     </span>
                   </div>
                 </div>
-              )}
+              , document.body)}
             </div>
           </div>
 
