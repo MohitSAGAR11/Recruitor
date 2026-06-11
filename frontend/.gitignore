@@ -1,0 +1,55 @@
+# ===========================
+# React + Vite + Tailwind CSS
+# ===========================
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Vite build output
+dist/
+dist-ssr/
+*.local
+
+# Vite cache
+.vite/
+
+# Logs
+logs/
+*.log
+
+# Runtime / OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+coverage/
+.nyc_output/
+
+# Tailwind / PostCSS cache
+.postcss-cache/
+
+# TypeScript (if ever added)
+*.tsbuildinfo
+
+# Storybook (if ever added)
+storybook-static/
