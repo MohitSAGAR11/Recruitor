@@ -73,7 +73,11 @@ async function callModel(model, systemPrompt, userContent, maxTokens) {
     requestBody,
     { headers, timeout: AI_CALL_TIMEOUT_MS }
   );
-  return response.data.choices[0].message.content;
+  const choices = response.data?.choices;
+  if (!choices || choices.length === 0 || !choices[0]?.message?.content) {
+    throw new Error('Model returned empty choices — no content in response');
+  }
+  return choices[0].message.content;
 }
 
 /**

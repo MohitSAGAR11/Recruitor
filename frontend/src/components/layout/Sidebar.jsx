@@ -13,9 +13,18 @@ const STEPS = [
 ];
 
 export default function Sidebar() {
-  const { currentStep, parsedJD, parsedCandidates, rankedCandidates, isScoringActive, setStep } = useRecruitStore();
+  const { currentStep, parsedJD, parsedCandidates, rankedCandidates, isScoringActive, setStep, showInterviewDrawer, generateInterviewQuestions, selectedCandidateIndex } = useRecruitStore();
 
   const handleStepClick = (stepId) => {
+    if (stepId === 5) {
+      // Step 5 = go to Results and open interview drawer for current candidate
+      setStep(4);
+      const candidate = rankedCandidates[selectedCandidateIndex];
+      if (candidate) {
+        generateInterviewQuestions(candidate);
+      }
+      return;
+    }
     if (stepId === 3 && rankedCandidates.length > 0 && !isScoringActive) {
       setStep(4);
     } else {
@@ -28,7 +37,8 @@ export default function Sidebar() {
     if (stepId === 2) return parsedCandidates.length > 0;
     if (stepId === 3) return rankedCandidates.length > 0;
     if (stepId === 4) return rankedCandidates.length > 0 && currentStep >= 4;
-    if (stepId === 5) return currentStep === 5;
+    // Step 5 is available whenever results exist (same as step 4)
+    if (stepId === 5) return rankedCandidates.length > 0;
     return false;
   };
 
@@ -98,9 +108,14 @@ export default function Sidebar() {
       {/* Step navigation */}
       <nav style={{ flex: 1, padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         {STEPS.map((step, idx) => {
-          const isActive = currentStep === step.id;
+          const isActive = step.id === 5
+            ? showInterviewDrawer && currentStep === 4  // step 5 = active when interview drawer is open
+            : currentStep === step.id;
           const done = isComplete(step.id);
-          const canNavigate = step.id <= currentStep || done;
+          // Step 5 is navigatable whenever ranked candidates exist
+          const canNavigate = step.id === 5
+            ? rankedCandidates.length > 0
+            : step.id <= currentStep || done;
 
           return (
             <React.Fragment key={step.id}>

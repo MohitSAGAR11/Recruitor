@@ -4,8 +4,46 @@ import { callAI } from '../services/openrouter.service.js';
 import { SCORE_CANDIDATE_PROMPT } from '../services/prompts.js';
 import { sseJobStore } from '../server.js';
 
-const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT_AI_CALLS || '5', 10);
-const INTER_BATCH_DELAY_MS = 200;
+// Higher concurrency = more parallel AI calls = faster batch completion
+const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT_AI_CALLS || '8', 10);
+
+/**
+ * Builds a minimal scoring payload — only fields the AI actually needs.
+ * Avoids sending email, phone, raw highlights, etc. which bloat token count
+ * and slow down inference without adding scoring signal.
+ */
+function buildScoringPayload(jd, candidateParsed) {
+  return JSON.stringify({
+    jd: {
+      title: jd.title,
+      mustHave: jd.mustHave,
+      niceToHave: (jd.niceToHave || []).slice(0, 6),
+      hardSkills: (jd.hardSkills || []).slice(0, 10),
+      softSkills: (jd.softSkills || []).slice(0, 5),
+      experienceLevel: jd.experienceLevel,
+      minYearsExperience: jd.minYearsExperience,
+      domainKnowledge: (jd.domainKnowledge || []).slice(0, 5),
+    },
+    candidate: {
+      name: candidateParsed?.name,
+      currentRole: candidateParsed?.currentRole,
+      totalYearsExperience: candidateParsed?.totalYearsExperience,
+      skills: (candidateParsed?.skills || []).slice(0, 15),
+      education: (candidateParsed?.education || []).slice(0, 2).map((e) => ({
+        degree: e.degree,
+        institution: e.institution,
+      })),
+      // Only role + company per job, no full highlights (saves ~40% tokens)
+      workHistory: (candidateParsed?.workHistory || []).slice(0, 4).map((w) => ({
+        role: w.role,
+        company: w.company,
+        years: w.years,
+      })),
+      careerTrajectory: candidateParsed?.careerTrajectory,
+      nonTraditionalBackground: candidateParsed?.nonTraditionalBackground,
+    },
+  });
+}
 
 /**
  * POST /api/score/batch
@@ -134,6 +172,8 @@ function broadcastSSE(jobId, data) {
 
 /**
  * Core async scoring logic.
+ * All candidates are scored in parallel up to MAX_CONCURRENT at once.
+ * No inter-batch delay — pLimit handles the concurrency window automatically.
  */
 async function processScoringJob(jobId, jd, candidates) {
   const job = sseJobStore.get(jobId);
@@ -141,19 +181,14 @@ async function processScoringJob(jobId, jd, candidates) {
   const scored = [];
 
   await Promise.all(
-    candidates.map((candidate, index) =>
+    candidates.map((candidate) =>
       limit(async () => {
-        if (index > 0 && index % MAX_CONCURRENT === 0) {
-          await new Promise((r) => setTimeout(r, INTER_BATCH_DELAY_MS));
-        }
-
-        const candidateName = candidate.parsed?.name || candidate.filename || `Candidate ${index + 1}`;
+        const candidateName = candidate.parsed?.name || candidate.filename || 'Unknown';
 
         try {
-          const scoreData = await callAI(
-            SCORE_CANDIDATE_PROMPT,
-            JSON.stringify({ jd, candidate: candidate.parsed })
-          );
+          // Slim payload + reduced max_tokens = faster inference per candidate
+          const payload = buildScoringPayload(jd, candidate.parsed);
+          const scoreData = await callAI(SCORE_CANDIDATE_PROMPT, payload, { maxTokens: 600 });
 
           const result = {
             filename: candidate.filename,
