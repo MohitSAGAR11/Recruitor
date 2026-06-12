@@ -1,48 +1,105 @@
 import { v4 as uuidv4 } from 'uuid';
 import pLimit from 'p-limit';
 import { callAI } from '../services/openrouter.service.js';
-import { SCORE_CANDIDATE_PROMPT } from '../services/prompts.js';
+import { SCORE_CANDIDATE_PROMPT, SCORE_CANDIDATES_BATCH_PROMPT } from '../services/prompts.js';
 import { sseJobStore } from '../server.js';
 
 // Higher concurrency = more parallel AI calls = faster batch completion
 const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT_AI_CALLS || '8', 10);
+// Candidates per AI call. Batching sends the JD + instructions ONCE per group
+// instead of per candidate → ~35% fewer tokens → stays under Groq's 12k TPM cap.
+const SCORING_BATCH_SIZE = parseInt(process.env.SCORING_BATCH_SIZE || '5', 10);
 
 /**
  * Builds a minimal scoring payload — only fields the AI actually needs.
  * Avoids sending email, phone, raw highlights, etc. which bloat token count
  * and slow down inference without adding scoring signal.
  */
+// Slim JD — only the fields the scorer needs (sent once per batch).
+function slimJD(jd) {
+  return {
+    title: jd.title,
+    mustHave: jd.mustHave,
+    niceToHave: (jd.niceToHave || []).slice(0, 6),
+    hardSkills: (jd.hardSkills || []).slice(0, 10),
+    softSkills: (jd.softSkills || []).slice(0, 5),
+    experienceLevel: jd.experienceLevel,
+    minYearsExperience: jd.minYearsExperience,
+    domainKnowledge: (jd.domainKnowledge || []).slice(0, 5),
+  };
+}
+
+// Slim candidate — drops email/phone/highlights that add tokens but no signal.
+function slimCandidate(candidateParsed) {
+  return {
+    name: candidateParsed?.name,
+    currentRole: candidateParsed?.currentRole,
+    totalYearsExperience: candidateParsed?.totalYearsExperience,
+    skills: (candidateParsed?.skills || []).slice(0, 15),
+    education: (candidateParsed?.education || []).slice(0, 2).map((e) => ({
+      degree: e.degree,
+      institution: e.institution,
+    })),
+    workHistory: (candidateParsed?.workHistory || []).slice(0, 4).map((w) => ({
+      role: w.role,
+      company: w.company,
+      years: w.years,
+    })),
+    careerTrajectory: candidateParsed?.careerTrajectory,
+    nonTraditionalBackground: candidateParsed?.nonTraditionalBackground,
+  };
+}
+
 function buildScoringPayload(jd, candidateParsed) {
-  return JSON.stringify({
-    jd: {
-      title: jd.title,
-      mustHave: jd.mustHave,
-      niceToHave: (jd.niceToHave || []).slice(0, 6),
-      hardSkills: (jd.hardSkills || []).slice(0, 10),
-      softSkills: (jd.softSkills || []).slice(0, 5),
-      experienceLevel: jd.experienceLevel,
-      minYearsExperience: jd.minYearsExperience,
-      domainKnowledge: (jd.domainKnowledge || []).slice(0, 5),
-    },
-    candidate: {
-      name: candidateParsed?.name,
-      currentRole: candidateParsed?.currentRole,
-      totalYearsExperience: candidateParsed?.totalYearsExperience,
-      skills: (candidateParsed?.skills || []).slice(0, 15),
-      education: (candidateParsed?.education || []).slice(0, 2).map((e) => ({
-        degree: e.degree,
-        institution: e.institution,
-      })),
-      // Only role + company per job, no full highlights (saves ~40% tokens)
-      workHistory: (candidateParsed?.workHistory || []).slice(0, 4).map((w) => ({
-        role: w.role,
-        company: w.company,
-        years: w.years,
-      })),
-      careerTrajectory: candidateParsed?.careerTrajectory,
-      nonTraditionalBackground: candidateParsed?.nonTraditionalBackground,
-    },
+  return JSON.stringify({ jd: slimJD(jd), candidate: slimCandidate(candidateParsed) });
+}
+
+// Scores ONE candidate (used as the per-candidate fallback when a batch fails).
+async function scoreOne(jd, candidate) {
+  try {
+    const payload = buildScoringPayload(jd, candidate.parsed);
+    const data = await callAI(SCORE_CANDIDATE_PROMPT, payload, { maxTokens: 600, tier: 'quality' });
+    return typeof data === 'object' ? data : null;
+  } catch (err) {
+    console.error(`[scoreOne] ${candidate.parsed?.name || candidate.filename} failed:`, err.message);
+    return null;
+  }
+}
+
+/**
+ * Scores a CHUNK of candidates in a single AI call.
+ * Returns an array of score objects aligned to `chunk` order.
+ * Any candidate the batch fails to score is auto-rescored individually.
+ */
+async function scoreChunk(jd, chunk) {
+  const payload = JSON.stringify({
+    jd: slimJD(jd),
+    candidates: chunk.map((c, i) => ({ index: i, ...slimCandidate(c.parsed) })),
   });
+  // Budget output tokens for the whole group (+headroom), capped for safety.
+  const maxTokens = Math.min(4096, 480 * chunk.length + 256);
+
+  try {
+    const res = await callAI(SCORE_CANDIDATES_BATCH_PROMPT, payload, { maxTokens, tier: 'quality' });
+    const arr = Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : null);
+    if (arr && arr.length) {
+      const byIndex = new Map();
+      for (const r of arr) {
+        if (r && typeof r.index === 'number') byIndex.set(r.index, r);
+      }
+      // Use the batch result where valid; individually rescore any gaps.
+      return Promise.all(
+        chunk.map((c, i) => {
+          const r = byIndex.get(i);
+          return (r && typeof r.overallScore === 'number') ? r : scoreOne(jd, c);
+        })
+      );
+    }
+  } catch (err) {
+    console.warn('[scoreChunk] batch call failed, falling back to individual:', err.message);
+  }
+  // Whole batch unusable → score each individually.
+  return Promise.all(chunk.map((c) => scoreOne(jd, c)));
 }
 
 /**
@@ -180,48 +237,33 @@ async function processScoringJob(jobId, jd, candidates) {
   const limit = pLimit(MAX_CONCURRENT);
   const scored = [];
 
+  // Split candidates into batches (5 per AI call by default).
+  const chunks = [];
+  for (let i = 0; i < candidates.length; i += SCORING_BATCH_SIZE) {
+    chunks.push(candidates.slice(i, i + SCORING_BATCH_SIZE));
+  }
+
   await Promise.all(
-    candidates.map((candidate) =>
+    chunks.map((chunk) =>
       limit(async () => {
-        const candidateName = candidate.parsed?.name || candidate.filename || 'Unknown';
+        const results = await scoreChunk(jd, chunk); // aligned to chunk order
 
-        try {
-          // Slim payload + reduced max_tokens = faster inference per candidate
-          const payload = buildScoringPayload(jd, candidate.parsed);
-          const scoreData = await callAI(SCORE_CANDIDATE_PROMPT, payload, { maxTokens: 600 });
+        chunk.forEach((candidate, i) => {
+          const candidateName = candidate.parsed?.name || candidate.filename || 'Unknown';
+          const scoreData = results[i];
+          const ok = scoreData && typeof scoreData === 'object';
 
-          const result = {
-            filename: candidate.filename,
-            name: candidateName,
-            parsed: candidate.parsed,
-            scores: typeof scoreData === 'object' ? scoreData : null,
-            status: typeof scoreData === 'object' ? 'success' : 'failed',
-          };
-
-          scored.push(result);
-          job.current++;
-          job.progress = Math.round((job.current / job.total) * 100);
-          job.latestName = candidateName;
-
-          broadcastSSE(jobId, {
-            type: 'progress',
-            progress: job.progress,
-            current: job.current,
-            total: job.total,
-            latestName: candidateName,
-          });
-        } catch (err) {
-          console.error(`[processScoringJob] Failed scoring ${candidateName}:`, err.message);
           scored.push({
             filename: candidate.filename,
             name: candidateName,
             parsed: candidate.parsed,
-            scores: null,
-            status: 'failed',
-            error: err.message,
+            scores: ok ? scoreData : null,
+            status: ok ? 'success' : 'failed',
           });
+
           job.current++;
           job.progress = Math.round((job.current / job.total) * 100);
+          job.latestName = candidateName;
           broadcastSSE(jobId, {
             type: 'progress',
             progress: job.progress,
@@ -229,7 +271,7 @@ async function processScoringJob(jobId, jd, candidates) {
             total: job.total,
             latestName: candidateName,
           });
-        }
+        });
       })
     )
   );

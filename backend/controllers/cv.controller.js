@@ -31,7 +31,8 @@ export async function parseCVBatch(req, res) {
 
         try {
           const rawText = await extractText(file.buffer, file.mimetype);
-          const parsed = await callAI(PARSE_CV_PROMPT, rawText);
+          // 'fast' tier → llama-3.1-8b (separate rate-limit bucket from scoring)
+          const parsed = await callAI(PARSE_CV_PROMPT, rawText, { tier: 'fast' });
 
           return {
             filename: file.originalname,

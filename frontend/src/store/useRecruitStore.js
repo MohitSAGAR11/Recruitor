@@ -5,6 +5,11 @@ import {
   scoreBatch as apiScoreBatch,
   checkBias as apiCheckBias,
   getInterviewQuestions as apiGetInterviewQuestions,
+  saveSession as apiSaveSession,
+  listSessions as apiListSessions,
+  getSession as apiGetSession,
+  deleteSession as apiDeleteSession,
+  saveInterviewGuide as apiSaveInterviewGuide,
 } from '../api/client.js';
 import { DEMO_CANDIDATES, DEMO_JD_TEXT } from '../utils/mockData.js';
 
@@ -41,6 +46,12 @@ const useRecruitStore = create((set, get) => ({
   interviewQuestions: {},  // keyed by candidate name
   activeInterviewCandidate: null,
   showInterviewDrawer: false,
+
+  // ── History / persistence ─────────────────────────────────
+  currentSessionId: null,  // id of the saved screening (set after auto-save)
+  savedSessions: [],       // list of past screenings (lightweight)
+  sessionsLoading: false,
+  showHistory: false,
 
   // ── UI ────────────────────────────────────────────────────
   loading: false,
@@ -193,7 +204,93 @@ const useRecruitStore = create((set, get) => ({
     } catch (err) {
       console.warn('[checkBias] Failed:', err.message);
     }
+    // Persist the completed screening (with or without bias) so it shows in history
+    get().persistCurrentSession();
   },
+
+  // ── Action: Persist current screening to history ──────────
+  persistCurrentSession: async () => {
+    const { parsedJD, rankedCandidates, biasReport, interviewQuestions, currentSessionId } = get();
+    if (currentSessionId || !rankedCandidates.length || !parsedJD) return; // save once
+    try {
+      const res = await apiSaveSession({
+        title: parsedJD.title,
+        jd: parsedJD,
+        candidates: rankedCandidates,
+        biasReport,
+        interviews: interviewQuestions,
+      });
+      set({ currentSessionId: res.data.id });
+    } catch (err) {
+      console.warn('[persistCurrentSession] Failed:', err.message);
+    }
+  },
+
+  // ── Action: Fetch history list ────────────────────────────
+  fetchSessions: async () => {
+    set({ sessionsLoading: true });
+    try {
+      const res = await apiListSessions();
+      set({ savedSessions: res.data || [], sessionsLoading: false });
+    } catch (err) {
+      set({ sessionsLoading: false });
+      console.warn('[fetchSessions] Failed:', err.message);
+    }
+  },
+
+  // ── Action: Open a past screening ─────────────────────────
+  loadSession: async (id) => {
+    const { addToast } = get();
+    set({ loading: true, loadingMessage: 'Loading screening…' });
+    try {
+      const res = await apiGetSession(id);
+      const s = res.data;
+      set({
+        parsedJD: s.jd,
+        rankedCandidates: s.candidates || [],
+        biasReport: s.bias_report || null,
+        interviewQuestions: s.interviews || {},
+        currentSessionId: s.id,
+        currentStep: 4,
+        selectedCandidateIndex: 0,
+        showHistory: false,
+        showInterviewDrawer: false,
+        loading: false,
+        loadingMessage: '',
+      });
+    } catch (err) {
+      set({ loading: false, loadingMessage: '' });
+      addToast(err.message, 'error');
+    }
+  },
+
+  // ── Action: Delete a past screening ───────────────────────
+  deleteSession: async (id) => {
+    try {
+      await apiDeleteSession(id);
+      set((s) => ({ savedSessions: s.savedSessions.filter((x) => x.id !== id) }));
+    } catch (err) {
+      get().addToast(err.message, 'error');
+    }
+  },
+
+  // ── Action: Start a fresh screening ───────────────────────
+  startNewScreening: () => set({
+    currentStep: 1,
+    jdRawText: '',
+    parsedJD: null,
+    uploadedFiles: [],
+    parsedCandidates: [],
+    rankedCandidates: [],
+    biasReport: null,
+    interviewQuestions: {},
+    currentSessionId: null,
+    selectedCandidateIndex: 0,
+    showInterviewDrawer: false,
+    showHistory: false,
+  }),
+
+  setShowHistory: (show) => set({ showHistory: show }),
 
   // ── Action: Generate Interview Questions ──────────────────
   generateInterviewQuestions: async (candidateData) => {
@@ -224,6 +321,9 @@ const useRecruitStore = create((set, get) => ({
         showInterviewDrawer: true,
       }));
       addToast('Interview guide ready!', 'success');
+      // Persist the guide onto the saved session (if this run is already saved)
+      const sid = get().currentSessionId;
+      if (sid) apiSaveInterviewGuide(sid, candidateName, result.data).catch(() => {});
     } catch (err) {
       set({ loading: false, loadingMessage: '' });
       addToast(err.message, 'error');
