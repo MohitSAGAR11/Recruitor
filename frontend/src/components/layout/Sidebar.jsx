@@ -1,8 +1,10 @@
 import React from 'react';
 import {
-  FileText, Upload, Zap, BarChart2, MessageSquare, CheckCircle2
+  FileText, Upload, Zap, BarChart2, MessageSquare, CheckCircle2,
+  Plus, Clock, LogOut
 } from 'lucide-react';
 import useRecruitStore from '../../store/useRecruitStore.js';
+import useAuthStore from '../../store/useAuthStore.js';
 
 const STEPS = [
   { id: 1, label: 'Define Role',     sub: 'Job description',    Icon: FileText     },
@@ -13,7 +15,8 @@ const STEPS = [
 ];
 
 export default function Sidebar() {
-  const { currentStep, parsedJD, parsedCandidates, rankedCandidates, isScoringActive, setStep, showInterviewDrawer, generateInterviewQuestions, selectedCandidateIndex } = useRecruitStore();
+  const { currentStep, parsedJD, parsedCandidates, rankedCandidates, isScoringActive, setStep, showInterviewDrawer, generateInterviewQuestions, selectedCandidateIndex, startNewScreening, setShowHistory } = useRecruitStore();
+  const { user, logout } = useAuthStore();
 
   const handleStepClick = (stepId) => {
     if (stepId === 5) {
@@ -103,6 +106,35 @@ export default function Sidebar() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Quick actions */}
+      <div style={{ padding: '14px 12px 4px', display: 'flex', gap: 8 }}>
+        <button
+          onClick={startNewScreening}
+          style={{
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            padding: '9px 10px', borderRadius: 'var(--radius-md)', cursor: 'pointer',
+            background: 'linear-gradient(135deg, var(--accent-primary), #6B5BD4)',
+            border: '1px solid rgba(255,255,255,0.15)', color: '#fff',
+            fontSize: '0.74rem', fontWeight: 700, boxShadow: '0 4px 14px rgba(139,124,246,0.3)',
+          }}
+          title="Start a fresh screening"
+        >
+          <Plus size={14} /> New
+        </button>
+        <button
+          onClick={() => setShowHistory(true)}
+          style={{
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            padding: '9px 10px', borderRadius: 'var(--radius-md)', cursor: 'pointer',
+            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+            color: 'var(--text-secondary)', fontSize: '0.74rem', fontWeight: 600,
+          }}
+          title="View past screenings"
+        >
+          <Clock size={14} /> History
+        </button>
       </div>
 
       {/* Step navigation */}
@@ -252,33 +284,36 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
+      {/* Footer — user + logout */}
       <div style={{
-        padding: '16px 20px',
+        padding: '16px 16px',
         borderTop: '1px solid rgba(255,255,255,0.06)',
+        display: 'flex', alignItems: 'center', gap: 10,
       }}>
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '10px 12px',
-          borderRadius: 'var(--radius-md)',
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.06)',
+          width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+          background: 'linear-gradient(135deg, var(--accent-primary), #6B5BD4)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#fff', fontWeight: 700, fontSize: '0.85rem',
+          border: '1px solid rgba(255,255,255,0.15)',
         }}>
-          <div style={{
-            width: 6,
-            height: 6,
-            borderRadius: '50%',
-            background: 'var(--accent-green)',
-            boxShadow: '0 0 8px var(--accent-green)',
-            flexShrink: 0,
-          }} />
-          <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>OpenRouter</span>
-            <span style={{ display: 'block', opacity: 0.6 }}>AI-Powered Analysis</span>
+          {(user?.name || user?.email || '?').charAt(0).toUpperCase()}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {user?.name || 'Recruiter'}
+          </div>
+          <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {user?.email}
           </div>
         </div>
+        <button
+          onClick={logout}
+          title="Sign out"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 'var(--radius-md)', padding: 8, cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', flexShrink: 0 }}
+        >
+          <LogOut size={14} />
+        </button>
       </div>
     </aside>
   );
