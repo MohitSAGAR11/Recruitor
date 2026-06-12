@@ -58,6 +58,29 @@ Return ONLY valid JSON. No markdown. No explanation. No preamble. Use this exact
   "interviewFocus": [string] (3-4 specific areas to probe for this candidate based on their actual background)
 }`;
 
+export const SCORE_CANDIDATES_BATCH_PROMPT = `You are an expert technical recruiter performing semantic candidate evaluation.
+You will receive ONE job description and an ARRAY of candidates (each has an "index").
+Score EACH candidate against the job requirements based on meaning and genuine fit — NOT keyword matching.
+Consider transferable skills and equivalent experience.
+Base scores ONLY on information explicitly present for that candidate. If a category lacks data, score it lower — do NOT infer or assume.
+Return ONLY valid JSON. No markdown. No explanation. No preamble.
+Return an object with a "results" array containing EXACTLY one entry per candidate, each preserving its "index". Use this exact shape:
+{
+  "results": [
+    {
+      "index": number,
+      "overallScore": number (0-100),
+      "categoryScores": { "hardSkills": number, "softSkills": number, "experience": number, "domainKnowledge": number, "education": number },
+      "matchedMustHave": [string],
+      "missingMustHave": [string],
+      "matchedNiceToHave": [string],
+      "strengthSummary": "2-3 specific sentences about THIS candidate — use their actual name, companies, and technologies",
+      "gapSummary": "2-3 specific sentences about THIS candidate's specific gaps",
+      "interviewFocus": [string]
+    }
+  ]
+}`;
+
 export const BIAS_CHECK_PROMPT = `You are a diversity and inclusion analyst reviewing a candidate shortlist for homogeneity bias.
 Analyze the provided shortlist for clustering across: educational institution prestige, career path homogeneity, demographic indicators in names and locations, traditional vs non-traditional backgrounds, and gender or nationality patterns.
 Flag candidates from the full ranked list (not just the shortlist) who add genuine diversity value.
