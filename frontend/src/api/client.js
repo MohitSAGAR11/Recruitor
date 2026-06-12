@@ -1,7 +1,12 @@
 import axios from 'axios';
 
+// In production the frontend (Vercel) and backend (Render) are on different
+// domains, so point at VITE_API_BASE_URL. In dev it's empty → "/api" uses the
+// Vite proxy. Exported so the SSE EventSource can build the same absolute URL.
+export const API_ORIGIN = import.meta.env.VITE_API_BASE_URL || '';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: `${API_ORIGIN}/api`,
   timeout: 60000, // 60s for large CV batches
   headers: { 'Content-Type': 'application/json' },
 });

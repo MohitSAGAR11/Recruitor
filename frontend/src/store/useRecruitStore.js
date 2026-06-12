@@ -11,6 +11,7 @@ import {
   deleteSession as apiDeleteSession,
   saveInterviewGuide as apiSaveInterviewGuide,
 } from '../api/client.js';
+import { API_ORIGIN } from '../api/client.js';
 import { DEMO_CANDIDATES, DEMO_JD_TEXT } from '../utils/mockData.js';
 
 let sseSource = null;
@@ -139,7 +140,7 @@ const useRecruitStore = create((set, get) => ({
       // Close any existing SSE connection
       if (sseSource) sseSource.close();
 
-      sseSource = new EventSource(`/api/score/progress/${jobId}`);
+      sseSource = new EventSource(`${API_ORIGIN}/api/score/progress/${jobId}`);
 
       sseSource.onmessage = (event) => {
         try {

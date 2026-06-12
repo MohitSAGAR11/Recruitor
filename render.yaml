@@ -1,0 +1,27 @@
+# Render Blueprint for the RecruitAI backend (Express + SSE).
+# Secrets (sync:false) are entered in the Render dashboard, never stored in git.
+services:
+  - type: web
+    name: recruitai-backend
+    runtime: node
+    plan: free
+    region: singapore          # closest Render region to the Supabase ap-south-1 DB
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GROQ_API_KEY        # comma-separated keys from separate accounts
+        sync: false
+      - key: CEREBRAS_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY  # optional
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGIN         # your Vercel frontend URL, e.g. https://recruitai.vercel.app
+        sync: false

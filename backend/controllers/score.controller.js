@@ -3,6 +3,7 @@ import pLimit from 'p-limit';
 import { callAI } from '../services/openrouter.service.js';
 import { SCORE_CANDIDATE_PROMPT, SCORE_CANDIDATES_BATCH_PROMPT } from '../services/prompts.js';
 import { sseJobStore } from '../server.js';
+import { config } from '../config/env.js';
 
 // Higher concurrency = more parallel AI calls = faster batch completion
 const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT_AI_CALLS || '8', 10);
@@ -166,7 +167,7 @@ export async function getScoringProgress(req, res) {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
-  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+  res.setHeader('Access-Control-Allow-Origin', config.corsOrigin);
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.flushHeaders();
 
