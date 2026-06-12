@@ -1,0 +1,11 @@
+# Netlify config for the RecruitAI frontend (Vite/React) in this monorepo.
+[build]
+  base = "frontend"          # build runs inside the frontend/ folder
+  command = "npm run build"
+  publish = "dist"           # resolves to frontend/dist
+
+# SPA fallback — serve index.html for any path
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
