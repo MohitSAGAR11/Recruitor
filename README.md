@@ -23,8 +23,10 @@
 
 | Layer | Technology |
 |---|---|
-| **Backend** | Node.js 18+ · Express 5 · ES Modules |
-| **AI Gateway** | OpenRouter API (cascading free-tier model chain) |
+| **Backend** | Node.js 18+ · Express 5 · ES Modules · Postgres (Supabase via Supavisor pooler) |
+| **AI Gateway** | Multi-provider LLM gateway (`llm.service.js`) with key rotation and cascading fallbacks across **Groq** (llama-3.1/3.3), **Cerebras** (gpt-oss-120b/zai-glm-4.7), **Gemini** (2.0 Flash), and **OpenRouter** (Kimi) |
+| **Authentication**| Custom stateless JWT authentication with bcrypt password hashing |
+| **History / DB**  | Persistent screening session store allowing saving, listing, and deleting past screenings |
 | **CV Parsing** | `pdf-parse` (PDFs) · `mammoth` (DOCX) |
 | **Real-time** | Server-Sent Events (SSE) for live scoring progress |
 | **Frontend** | Vite · React 18 · Zustand |
@@ -36,7 +38,8 @@
 
 ### Prerequisites
 - Node.js 18+
-- A free [OpenRouter](https://openrouter.ai) API key
+- At least one LLM API key (e.g., **Groq**, **Cerebras**, **Gemini**, or **OpenRouter**)
+- A PostgreSQL database (e.g., free tier on **Supabase**) for user management and history
 
 ### 1. Clone & Install
 
@@ -61,9 +64,16 @@ cp .env.example .env
 Edit `.env`:
 
 ```env
-OPENROUTER_API_KEY=sk-or-v1-your-key-here
-OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-MODEL=openrouter/owl-alpha        # primary free model (auto-cascades on 429/404)
+# Database & Authentication
+DATABASE_URL=postgresql://postgres:...   # Postgres connection string
+JWT_SECRET=your-secure-jwt-secret       # Random string for JWT tokens
+
+# LLM Providers (comma-separate multiple keys to enable key-rotation / pool load spreading)
+GROQ_API_KEYS=gsk_...
+CEREBRAS_API_KEYS=csk_...
+GEMINI_API_KEY=AIzaSy...
+OPENROUTER_API_KEYS=sk-or-...
+
 PORT=3001
 MAX_CONCURRENT_AI_CALLS=8
 AI_CALL_TIMEOUT_MS=50000
@@ -74,7 +84,7 @@ AI_CALL_TIMEOUT_MS=50000
 ```bash
 # Terminal 1 — backend
 cd backend && npm run dev
-# → http://localhost:3001
+# → http://localhost:3001 (or port specified in env)
 
 # Terminal 2 — frontend
 cd frontend && npm run dev
@@ -97,27 +107,43 @@ cd frontend && npm run dev
 
 ## 🌐 API Reference
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| `POST` | `/api/jd/parse` | Parse JD from text or uploaded file |
-| `POST` | `/api/cv/parse-batch` | Batch parse CV files (PDF/DOCX, max 50) |
-| `POST` | `/api/score/batch` | Start async AI scoring job → returns `{ jobId }` |
-| `GET`  | `/api/score/progress/:jobId` | SSE stream — progress + final ranked results |
-| `POST` | `/api/bias/check` | Bias analysis on the shortlisted candidates |
-| `POST` | `/api/interview/questions` | Generate 12 tailored interview questions |
-| `GET`  | `/api/health` | Health check |
+| Method | Route | Description | Auth Required |
+|--------|-------|-------------|---------------|
+| `POST` | `/api/auth/signup` | Register a new user account | No |
+| `POST` | `/api/auth/login` | Log in and receive JWT token | No |
+| `GET`  | `/api/auth/me` | Fetch active user's profile info | Yes |
+| `POST` | `/api/jd/parse` | Parse JD from text or uploaded file | No |
+| `POST` | `/api/cv/parse-batch` | Batch parse CV files (PDF/DOCX, max 50) | No |
+| `POST` | `/api/score/batch` | Start async AI scoring job → returns `{ jobId }` | No |
+| `GET`  | `/api/score/progress/:jobId` | SSE stream — progress + final ranked results | No |
+| `POST` | `/api/bias/check` | Bias analysis on the shortlisted candidates | No |
+| `POST` | `/api/interview/questions` | Generate 12 tailored interview questions | No |
+| `GET`  | `/api/sessions` | List user's past screening sessions | Yes |
+| `POST` | `/api/sessions` | Save a completed screening session | Yes |
+| `GET`  | `/api/sessions/:id` | Retrieve detailed screening session | Yes |
+| `PATCH` | `/api/sessions/:id/interviews` | Save candidate interview guide | Yes |
+| `DELETE`| `/api/sessions/:id` | Delete a past screening session | Yes |
+| `GET`  | `/api/health` | Health check | No |
 
 ---
 
 ## ⚙️ Environment Variables
 
 ```env
-OPENROUTER_API_KEY=          # Required — your OpenRouter key
-OPENROUTER_BASE_URL=         # https://openrouter.ai/api/v1
-MODEL=                       # Primary model (fallback chain kicks in on 429/404)
+# Database & Auth
+DATABASE_URL=                # Direct/Pooler connection string (PostgreSQL/Supabase)
+JWT_SECRET=                  # Secret signing key for JWT tokens
+
+# LLM Providers (supports rotation of multiple comma-separated keys)
+GROQ_API_KEYS=               # Groq API keys (primary LLM provider)
+CEREBRAS_API_KEYS=           # Cerebras API keys (overflow fallback)
+GEMINI_API_KEY=              # Google Gemini API key (optional fallback)
+OPENROUTER_API_KEYS=         # OpenRouter API keys (last-resort fallback)
+
 PORT=3001                    # Backend port
 MAX_CONCURRENT_AI_CALLS=8    # Parallel AI requests during batch scoring
 AI_CALL_TIMEOUT_MS=50000     # Per-request hard timeout (ms)
+CORS_ORIGIN=                 # Whitelisted frontend origin for CORS
 ```
 
 ---
@@ -127,22 +153,34 @@ AI_CALL_TIMEOUT_MS=50000     # Per-request hard timeout (ms)
 ```
 Recruitor/
 ├── backend/
-│   ├── controllers/         # Route handlers (JD, CV, Score, Bias, Interview)
+│   ├── config/              # Central config loader
+│   │   └── env.js           # Env validation & LLM key pooling config
+│   ├── controllers/         # Route handlers (JD, CV, Score, Bias, Interview, Auth, Session)
+│   ├── db/
+│   │   └── pool.js          # Postgres database connection pool
+│   ├── middleware/          # JWT verification, Error handling, request validation
+│   │   ├── auth.middleware.js
+│   │   └── error.middleware.js
+│   ├── routes/              # Express routers (Auth, Sessions, JD, CV, etc.)
 │   ├── services/
-│   │   ├── openrouter.service.js   # AI call orchestrator with model cascade
-│   │   ├── parser.service.js       # PDF/DOCX text extraction
-│   │   └── prompts.js              # All LLM system prompts
-│   ├── routes/              # Express routers
-│   ├── middleware/          # Error handling, request validation
-│   └── server.js            # Express app + SSE job store
+│   │   ├── auth.service.js  # Password hashing (bcrypt) & JWT token signing
+│   │   ├── llm.service.js   # Multi-provider LLM gateway, key rotation, JSON extraction
+│   │   ├── openrouter.service.js # Backwards-compat shim
+│   │   ├── parser.service.js # PDF/DOCX text extraction
+│   │   └── prompts.js       # All LLM system prompts
+│   └── server.js            # Express app + DB verification + SSE job store
 └── frontend/
     └── src/
-        ├── api/client.js    # Axios API client (all backend calls)
+        ├── api/client.js    # Axios API client with interceptors for JWT
         ├── store/           # Zustand global state
+        │   ├── useAuthStore.js    # Auth status, login, signup
+        │   └── useRecruitStore.js # Screening session, history, and AI steps
         ├── components/
+        │   ├── auth/        # Login/Signup screen
         │   ├── layout/      # App shell, Sidebar navigation
-        │   ├── steps/       # One component per workflow step (Step1–Step5)
-        │   └── ui/          # Reusable atoms (CandidateCard, ScoreRing, etc.)
+        │   ├── steps/       # Workflow steps (Step1–Step4, Step5 is inline)
+        │   ├── ui/          # Reusable atoms (Toast, CandidateCard, ScoreRing, etc.)
+        │   └── HistoryPanel.jsx   # Past screening screenings list drawer
         └── utils/mockData.js  # 15 demo candidates + demo JD text
 ```
 

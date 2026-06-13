@@ -51,7 +51,7 @@ export const config = {
   // ── Tuning ──
   aiTimeoutMs: parseInt(pick('AI_CALL_TIMEOUT_MS') || '45000', 10),
   maxConcurrentAiCalls: parseInt(pick('MAX_CONCURRENT_AI_CALLS') || '8', 10),
-  corsOrigin: pick('CORS_ORIGIN') || 'http://localhost:5173',
+  corsOrigin: pick('CORS_ORIGIN') || 'https://recruitor-ai.netlify.app',
 };
 
 /** Logs which providers are configured (no secret values printed). */
