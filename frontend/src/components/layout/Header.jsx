@@ -1,16 +1,20 @@
 import React from 'react';
-import { Cpu } from 'lucide-react';
 
-export default function Header({ title, subtitle }) {
+export default function Header({ title, subtitle, description }) {
   return (
-    <header style={{ marginBottom: 32 }}>
+    <header className="stage-header">
       {subtitle && (
-        <p style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--accent-primary)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
-          <Cpu size={12} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
+        <p className="eyebrow">
+          <span className="eyebrow-dot" />
           {subtitle}
         </p>
       )}
       <h1 className="text-display">{title}</h1>
+      {description && (
+        <p className="text-body" style={{ maxWidth: 640, marginTop: 12 }}>
+          {description}
+        </p>
+      )}
     </header>
   );
 }

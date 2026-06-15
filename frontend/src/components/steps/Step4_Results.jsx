@@ -1,490 +1,103 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
-import {
-  SlidersHorizontal,
-  ChevronDown,
-  X,
-  Star,
-  TrendingUp,
-  Users,
-  Trophy,
-} from "lucide-react";
-import BiasAlert from "../ui/BiasAlert.jsx";
-import CandidateCard from "../ui/CandidateCard.jsx";
-import CandidateDetail from "../ui/CandidateDetail.jsx";
-import Step5_Interview from "./Step5_Interview.jsx";
-import useRecruitStore from "../../store/useRecruitStore.js";
+import React, { useMemo, useState } from 'react';
+import { BarChart2, SlidersHorizontal, Star, TrendingUp, Trophy, Users } from 'lucide-react';
+import BiasAlert from '../ui/BiasAlert.jsx';
+import CandidateCard from '../ui/CandidateCard.jsx';
+import CandidateDetail from '../ui/CandidateDetail.jsx';
+import Step5_Interview from './Step5_Interview.jsx';
+import useRecruitStore from '../../store/useRecruitStore.js';
 
 const FILTERS = [
-  { id: "all", label: "All Candidates", Icon: Users, desc: "Show everyone" },
-  {
-    id: "shortlisted",
-    label: "Shortlisted Only",
-    Icon: Star,
-    desc: "AI-recommended picks",
-  },
-  { id: "top25", label: "Top 25%", Icon: Trophy, desc: "Score ≥ 75" },
-  { id: "top50", label: "Top 50%", Icon: TrendingUp, desc: "Score ≥ 50" },
+  { id: 'all', label: 'All', Icon: Users },
+  { id: 'shortlisted', label: 'Shortlist', Icon: Star },
+  { id: 'top25', label: 'Top 25%', Icon: Trophy },
+  { id: 'top50', label: 'Top 50%', Icon: TrendingUp },
 ];
 
 function applyFilter(candidates, filterId) {
-  switch (filterId) {
-    case "shortlisted":
-      return candidates.filter((c) => c.shortlisted);
-    case "top25":
-      return candidates.filter((c) => (c.scores?.overallScore ?? 0) >= 75);
-    case "top50":
-      return candidates.filter((c) => (c.scores?.overallScore ?? 0) >= 50);
-    default:
-      return candidates;
-  }
+  if (filterId === 'shortlisted') return candidates.filter((candidate) => candidate.shortlisted);
+  if (filterId === 'top25') return candidates.filter((candidate) => (candidate.scores?.overallScore ?? 0) >= 75);
+  if (filterId === 'top50') return candidates.filter((candidate) => (candidate.scores?.overallScore ?? 0) >= 50);
+  return candidates;
 }
 
 export default function Step4_Results() {
-  const {
-    rankedCandidates,
-    selectedCandidateIndex,
-    selectCandidate,
-    biasReport,
-    showInterviewDrawer,
-  } = useRecruitStore();
+  const { rankedCandidates, selectedCandidateIndex, selectCandidate, biasReport, showInterviewDrawer } = useRecruitStore();
+  const [activeFilter, setActiveFilter] = useState('all');
 
-  // Resize state
-  const [leftWidth, setLeftWidth] = useState(null);
-  const [isResizing, setIsResizing] = useState(false);
-  const containerRef = useRef(null);
-
-  // Filter state
-  const [activeFilter, setActiveFilter] = useState("all");
-  const [filterOpen, setFilterOpen] = useState(false);
-  const filterRef = useRef(null);   // wrapper div around the button
-  const dropdownRef = useRef(null); // the dropdown panel itself
-  const btnRef = useRef(null);
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handler = (e) => {
-      // Close if click is outside both the button wrapper AND the dropdown panel
-      const outsideWrapper = !filterRef.current?.contains(e.target);
-      const outsideDropdown = !dropdownRef.current?.contains(e.target);
-      if (outsideWrapper && outsideDropdown) {
-        setFilterOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  // Compute fixed position from button rect each time it opens
-  const openDropdown = () => {
-    if (btnRef.current) {
-      const r = btnRef.current.getBoundingClientRect();
-      setDropdownPos({ top: r.bottom + 6, left: r.right - 220 });
-    }
-    setFilterOpen((o) => !o);
-  };
-
-  // Resize drag logic
-  const startResize = useCallback(
-    (e) => {
-      e.preventDefault();
-      if (leftWidth === null && containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        setLeftWidth(rect.width / 2);
-      }
-      setIsResizing(true);
-    },
-    [leftWidth],
-  );
-
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (!isResizing || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const newWidth = e.clientX - rect.left;
-      const minL = 260;
-      const maxL = Math.max(minL, rect.width - 300); // Leave at least 300px for detail view
-      setLeftWidth(Math.max(minL, Math.min(maxL, newWidth)));
-    };
-    const handleMouseUp = () => setIsResizing(false);
-
-    if (isResizing) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
-    } else {
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    }
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-  }, [isResizing]);
-
-  // Derive filtered list
-  const filteredCandidates = applyFilter(rankedCandidates, activeFilter);
+  const filteredCandidates = useMemo(() => applyFilter(rankedCandidates, activeFilter), [rankedCandidates, activeFilter]);
   const selected = rankedCandidates[selectedCandidateIndex];
-  const shortlistedCount = rankedCandidates.filter((c) => c.shortlisted).length;
-  const activeFilterLabel =
-    FILTERS.find((f) => f.id === activeFilter)?.label ?? "Filter";
-  const isFiltered = activeFilter !== "all";
-  const resolvedWidth = leftWidth !== null ? leftWidth : "50%";
+  const shortlistedCount = rankedCandidates.filter((candidate) => candidate.shortlisted).length;
+  const averageScore = rankedCandidates.length
+    ? Math.round(rankedCandidates.reduce((sum, candidate) => sum + (candidate.scores?.overallScore ?? 0), 0) / rankedCandidates.length)
+    : 0;
+
+  if (rankedCandidates.length === 0) {
+    return (
+      <div className="stage stage-narrow" style={{ display: 'grid', placeItems: 'center', minHeight: '100vh' }}>
+        <div className="empty-state panel" style={{ width: 'min(520px, 100%)', padding: 32 }}>
+          <BarChart2 size={30} />
+          <div>
+            <p className="text-heading">No ranked candidates yet</p>
+            <p className="text-body" style={{ fontSize: 13, marginTop: 4 }}>Parse CVs and run scoring to populate the review board.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        display: "flex",
-        flex: 1,
-        overflow: "hidden",
-        position: "relative",
-      }}
-    >
-      {/* ── LEFT PANEL ── */}
-      <div
-        style={{
-          width: resolvedWidth,
-          minWidth: 260,
-          borderRight: "1px solid rgba(255,255,255,0.10)",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          flexShrink: 0,
-          background: "rgba(10, 8, 28, 0.50)",
-          backdropFilter: "blur(28px) saturate(160%)",
-          WebkitBackdropFilter: "blur(28px) saturate(160%)",
-        }}
-      >
-        {/* Panel header */}
-        <div
-          style={{
-            padding: "18px 14px 12px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            flexShrink: 0,
-            background: "rgba(255,255,255,0.02)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 6,
-            }}
-          >
-            <h2
-              style={{
-                fontSize: "0.92rem",
-                fontWeight: 700,
-                letterSpacing: "-0.02em",
-              }}
-            >
-              {isFiltered
-                ? `${filteredCandidates.length} of ${rankedCandidates.length}`
-                : rankedCandidates.length}{" "}
-              Candidates
-            </h2>
-
-            {/* ── Filter button + dropdown ── */}
-            <div ref={filterRef} style={{ position: "relative" }}>
-              <button
-                ref={btnRef}
-                onClick={openDropdown}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  padding: "5px 10px",
-                  fontSize: "0.72rem",
-                  fontWeight: 600,
-                  borderRadius: "var(--radius-sm)",
-                  cursor: "pointer",
-                  background: isFiltered
-                    ? "rgba(139,124,246,0.15)"
-                    : "rgba(255,255,255,0.06)",
-                  border: isFiltered
-                    ? "1px solid rgba(139,124,246,0.35)"
-                    : "1px solid rgba(255,255,255,0.10)",
-                  color: isFiltered
-                    ? "var(--accent-primary)"
-                    : "var(--text-secondary)",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)",
-                  transition: "all var(--transition-fast)",
-                }}
-              >
-                <SlidersHorizontal size={11} />
-                {isFiltered ? activeFilterLabel : "Filter"}
-                {isFiltered ? (
-                  <span
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveFilter("all");
-                      setFilterOpen(false);
-                    }}
-                    style={{
-                      marginLeft: 2,
-                      display: "flex",
-                      alignItems: "center",
-                      opacity: 0.7,
-                    }}
-                    title="Clear filter"
-                  >
-                    <X size={10} />
-                  </span>
-                ) : (
-                  <ChevronDown
-                    size={10}
-                    style={{
-                      opacity: 0.6,
-                      transform: filterOpen ? "rotate(180deg)" : "rotate(0deg)",
-                      transition: "transform 150ms ease",
-                    }}
-                  />
-                )}
-              </button>
-
-              {/* Dropdown — rendered via portal to escape backdropFilter stacking context */}
-              {filterOpen && createPortal(
-                <div
-                  ref={dropdownRef}
-                  className="animate-fade-in"
-                  style={{
-                    position: "fixed",
-                    top: dropdownPos.top,
-                    left: Math.max(8, dropdownPos.left),
-                    width: 220,
-                    background: "#1A1130",
-                    border: "1px solid rgba(255,255,255,0.18)",
-                    borderRadius: "var(--radius-md)",
-                    boxShadow:
-                      "0 24px 60px rgba(0,0,0,0.85), 0 1px 0 rgba(255,255,255,0.10) inset",
-                    zIndex: 9999,
-                    overflow: "hidden",
-                    padding: "6px",
-                  }}
-                >
-                  <p
-                    style={{
-                      fontSize: "0.62rem",
-                      fontWeight: 700,
-                      color: "var(--text-muted)",
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      padding: "6px 10px 8px",
-                    }}
-                  >
-                    Filter by
-                  </p>
-
-                  {FILTERS.map((f) => {
-                    const isActive = activeFilter === f.id;
-                    return (
-                      <button
-                        key={f.id}
-                        onClick={() => {
-                          setActiveFilter(f.id);
-                          setFilterOpen(false);
-                        }}
-                        style={{
-                          width: "100%",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 10,
-                          padding: "9px 10px",
-                          borderRadius: "var(--radius-sm)",
-                          background: isActive
-                            ? "rgba(139,124,246,0.15)"
-                            : "transparent",
-                          border: isActive
-                            ? "1px solid rgba(139,124,246,0.25)"
-                            : "1px solid transparent",
-                          cursor: "pointer",
-                          textAlign: "left",
-                          transition: "all var(--transition-fast)",
-                          marginBottom: 2,
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isActive)
-                            e.currentTarget.style.background =
-                              "rgba(255,255,255,0.06)";
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isActive)
-                            e.currentTarget.style.background = "transparent";
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: 28,
-                            height: 28,
-                            borderRadius: 8,
-                            background: isActive
-                              ? "rgba(139,124,246,0.2)"
-                              : "rgba(255,255,255,0.05)",
-                            border: isActive
-                              ? "1px solid rgba(139,124,246,0.3)"
-                              : "1px solid rgba(255,255,255,0.08)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
-                          }}
-                        >
-                          <f.Icon
-                            size={13}
-                            color={
-                              isActive
-                                ? "var(--accent-primary)"
-                                : "var(--text-muted)"
-                            }
-                          />
-                        </div>
-                        <div>
-                          <div
-                            style={{
-                              fontSize: "0.78rem",
-                              fontWeight: 600,
-                              color: isActive
-                                ? "var(--text-primary)"
-                                : "var(--text-secondary)",
-                              lineHeight: 1.2,
-                            }}
-                          >
-                            {f.label}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: "0.65rem",
-                              color: "var(--text-muted)",
-                              marginTop: 2,
-                            }}
-                          >
-                            {f.desc}
-                          </div>
-                        </div>
-                        {isActive && (
-                          <div
-                            style={{
-                              marginLeft: "auto",
-                              width: 6,
-                              height: 6,
-                              borderRadius: "50%",
-                              background: "var(--accent-primary)",
-                              flexShrink: 0,
-                            }}
-                          />
-                        )}
-                      </button>
-                    );
-                  })}
-
-                  {/* Count summary */}
-                  <div
-                    style={{
-                      margin: "6px 0 2px",
-                      padding: "8px 10px",
-                      borderTop: "1px solid rgba(255,255,255,0.07)",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: "0.65rem",
-                        color: "var(--text-muted)",
-                      }}
-                    >
-                      Shortlisted
-                    </span>
-                    <span
-                      style={{
-                        fontSize: "0.65rem",
-                        fontWeight: 700,
-                        color: "var(--accent-green)",
-                      }}
-                    >
-                      {shortlistedCount} / {rankedCandidates.length}
-                    </span>
-                  </div>
-                </div>
-              , document.body)}
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(340px, 42%) minmax(0, 1fr)', gridTemplateRows: '100%', height: '100%', overflow: 'hidden' }}>
+      <aside style={{ minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--color-charcoal)', borderRight: '1px solid var(--color-graphite)' }}>
+        <header style={{ padding: 16, borderBottom: '1px solid var(--color-graphite)' }}>
+          <p className="eyebrow"><span className="eyebrow-dot" />RUN-04 / REVIEW BOARD</p>
+          <div style={{ display: 'flex', alignItems: 'end', justifyContent: 'space-between', gap: 16, marginTop: 12 }}>
+            <div>
+              <h1 className="text-title" style={{ fontSize: 24 }}>Candidate ranking</h1>
+              <p className="text-body" style={{ fontSize: 12, marginTop: 4 }}>{filteredCandidates.length} visible / {rankedCandidates.length} total</p>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <span className="badge badge-muted">{shortlistedCount} shortlisted</span>
+              <span className="badge badge-primary">avg {averageScore}</span>
             </div>
           </div>
+        </header>
 
-          {/* Sub-line */}
-          <p style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>
-            <span style={{ color: "var(--accent-green)", fontWeight: 600 }}>
-              {shortlistedCount}
-            </span>{" "}
-            shortlisted
-            {isFiltered && (
-              <span style={{ color: "var(--accent-primary)", marginLeft: 6 }}>
-                · {activeFilterLabel}
-              </span>
-            )}{" "}
-            · Click to view
-          </p>
+        <div style={{ padding: 12, borderBottom: '1px solid var(--color-graphite)' }}>
+          <div style={{ display: 'flex', gap: 6, overflowX: 'auto' }}>
+            {FILTERS.map((filter) => {
+              const Icon = filter.Icon;
+              const active = activeFilter === filter.id;
+              return (
+                <button key={filter.id} className={`btn btn-sm ${active ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => setActiveFilter(filter.id)}>
+                  <Icon size={13} /> {filter.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Bias alert */}
         {biasReport?.biasDetected && (
-          <div style={{ padding: "10px 12px 0", flexShrink: 0 }}>
+          <div style={{ padding: '12px 12px 0' }}>
             <BiasAlert biasReport={biasReport} />
           </div>
         )}
 
-        {/* Candidate list */}
-        <div style={{ overflowY: "auto", flex: 1, padding: "8px" }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 10 }}>
           {filteredCandidates.length === 0 ? (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                height: 180,
-                gap: 10,
-                color: "var(--text-muted)",
-              }}
-            >
-              <SlidersHorizontal size={22} style={{ opacity: 0.3 }} />
-              <p style={{ fontSize: "0.8rem", textAlign: "center" }}>
-                No candidates match
-                <br />
-                this filter
-              </p>
-              <button
-                onClick={() => setActiveFilter("all")}
-                style={{
-                  fontSize: "0.72rem",
-                  color: "var(--accent-primary)",
-                  background: "rgba(139,124,246,0.1)",
-                  border: "1px solid rgba(139,124,246,0.2)",
-                  borderRadius: 6,
-                  padding: "5px 12px",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                }}
-              >
-                Clear filter
-              </button>
+            <div className="empty-state">
+              <SlidersHorizontal size={26} />
+              <div>
+                <p className="text-heading">No candidates match</p>
+                <p className="text-body" style={{ fontSize: 13, marginTop: 4 }}>Clear the filter to restore the full ranking.</p>
+              </div>
+              <button className="btn btn-ghost btn-sm" onClick={() => setActiveFilter('all')}>Clear filter</button>
             </div>
           ) : (
             filteredCandidates.map((candidate, index) => {
-              // Find the true index in the full list so selection works correctly
               const trueIndex = rankedCandidates.indexOf(candidate);
               return (
                 <CandidateCard
-                  key={candidate.filename || index}
+                  key={candidate.filename || candidate.name || index}
                   candidate={candidate}
                   index={index}
                   isSelected={selectedCandidateIndex === trueIndex}
@@ -495,75 +108,12 @@ export default function Step4_Results() {
             })
           )}
         </div>
-      </div>
+      </aside>
 
-      {/* ── RESIZABLE SPLITTER ── */}
-      <div
-        onMouseDown={startResize}
-        style={{
-          width: "5px",
-          cursor: "col-resize",
-          background: isResizing ? "rgba(139,124,246,0.4)" : "transparent",
-          flexShrink: 0,
-          zIndex: 10,
-          transition: "background var(--transition-fast)",
-          position: "relative",
-        }}
-        onMouseEnter={(e) => {
-          if (!isResizing)
-            e.currentTarget.style.background = "rgba(139,124,246,0.2)";
-        }}
-        onMouseLeave={(e) => {
-          if (!isResizing) e.currentTarget.style.background = "transparent";
-        }}
-      />
+      <main style={{ minWidth: 0, height: '100%', overflow: 'hidden', background: 'var(--color-onyx)' }}>
+        <CandidateDetail candidate={selected} />
+      </main>
 
-      {/* ── RIGHT PANEL ── */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          background: "transparent",
-          minWidth: 0,
-        }}
-      >
-        {selected ? (
-          <CandidateDetail candidate={selected} />
-        ) : (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-              gap: 16,
-              color: "var(--text-muted)",
-            }}
-          >
-            <div
-              style={{
-                width: 60,
-                height: 60,
-                borderRadius: "50%",
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "1.5rem",
-              }}
-            >
-              👤
-            </div>
-            <p style={{ fontSize: "0.88rem" }}>
-              Select a candidate from the left panel
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* ── INTERVIEW DRAWER ── */}
       {showInterviewDrawer && <Step5_Interview />}
     </div>
   );

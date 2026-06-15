@@ -1,46 +1,61 @@
 import React from 'react';
 import {
-  FileText, Upload, Zap, BarChart2, MessageSquare, CheckCircle2,
-  Plus, Clock, LogOut
+  BarChart2,
+  CheckCircle2,
+  Clock,
+  FileText,
+  LogOut,
+  MessageSquare,
+  Plus,
+  Upload,
+  Zap,
 } from 'lucide-react';
 import useRecruitStore from '../../store/useRecruitStore.js';
 import useAuthStore from '../../store/useAuthStore.js';
 
 const STEPS = [
-  { id: 1, label: 'Define Role',     sub: 'Job description',    Icon: FileText     },
-  { id: 2, label: 'Upload CVs',      sub: 'Candidate files',    Icon: Upload       },
-  { id: 3, label: 'Score & Rank',    sub: 'AI evaluation',      Icon: Zap          },
-  { id: 4, label: 'Review Results',  sub: 'Ranked candidates',  Icon: BarChart2    },
-  { id: 5, label: 'Interview Guide', sub: 'Tailored questions', Icon: MessageSquare },
+  { id: 1, label: 'Role brief', sub: 'Parse requirements', Icon: FileText },
+  { id: 2, label: 'Candidate intake', sub: 'Upload and parse CVs', Icon: Upload },
+  { id: 3, label: 'Scoring run', sub: 'Model evaluation', Icon: Zap },
+  { id: 4, label: 'Review board', sub: 'Ranked shortlist', Icon: BarChart2 },
+  { id: 5, label: 'Interview kit', sub: 'Question guide', Icon: MessageSquare },
 ];
 
 export default function Sidebar() {
-  const { currentStep, parsedJD, parsedCandidates, rankedCandidates, isScoringActive, setStep, showInterviewDrawer, generateInterviewQuestions, selectedCandidateIndex, startNewScreening, setShowHistory } = useRecruitStore();
+  const {
+    currentStep,
+    parsedJD,
+    parsedCandidates,
+    rankedCandidates,
+    isScoringActive,
+    setStep,
+    showInterviewDrawer,
+    generateInterviewQuestions,
+    selectedCandidateIndex,
+    startNewScreening,
+    setShowHistory,
+  } = useRecruitStore();
   const { user, logout } = useAuthStore();
 
   const handleStepClick = (stepId) => {
     if (stepId === 5) {
-      // Step 5 = go to Results and open interview drawer for current candidate
       setStep(4);
       const candidate = rankedCandidates[selectedCandidateIndex];
-      if (candidate) {
-        generateInterviewQuestions(candidate);
-      }
+      if (candidate) generateInterviewQuestions(candidate);
       return;
     }
     if (stepId === 3 && rankedCandidates.length > 0 && !isScoringActive) {
       setStep(4);
-    } else {
-      setStep(stepId);
+      return;
     }
+    setStep(stepId);
   };
 
   const isComplete = (stepId) => {
-    if (stepId === 1) return !!parsedJD;
+    if (stepId === 1) return Boolean(parsedJD);
     if (stepId === 2) return parsedCandidates.length > 0;
     if (stepId === 3) return rankedCandidates.length > 0;
     if (stepId === 4) return rankedCandidates.length > 0 && currentStep >= 4;
-    // Step 5 is available whenever results exist (same as step 4)
     if (stepId === 5) return rankedCandidates.length > 0;
     return false;
   };
@@ -48,272 +63,156 @@ export default function Sidebar() {
   return (
     <aside
       style={{
-        width: 260,
+        width: 280,
         height: '100vh',
-        background: 'rgba(12, 10, 30, 0.55)',
-        backdropFilter: 'blur(32px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(32px) saturate(180%)',
-        borderRight: '1px solid rgba(255,255,255,0.12)',
+        flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
+        background: 'var(--color-charcoal)',
+        borderRight: '1px solid var(--color-graphite)',
+        boxShadow: 'var(--shadow-sm)',
         position: 'sticky',
         top: 0,
-        zIndex: 10,
-        flexShrink: 0,
-        boxShadow: '4px 0 24px rgba(0,0,0,0.3)',
+        zIndex: 20,
       }}
     >
-      {/* Logo / Branding */}
-      <div style={{
-        padding: '28px 20px 22px',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-      }}>
+      <div style={{ padding: '22px 20px 18px', borderBottom: '1px solid var(--color-graphite)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div
+            aria-hidden="true"
             style={{
-              width: 38,
-              height: 38,
-              borderRadius: 12,
-              background: 'linear-gradient(135deg, #8B7CF6, #6B5BD4)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 0 20px rgba(139,124,246,0.4), 0 4px 12px rgba(0,0,0,0.3)',
-              fontSize: '1.1rem',
-              flexShrink: 0,
-              border: '1px solid rgba(255,255,255,0.15)',
+              width: 30,
+              height: 30,
+              borderRadius: 6,
+              background: 'var(--color-snow)',
+              color: 'var(--color-onyx)',
+              display: 'grid',
+              placeItems: 'center',
+              fontFamily: 'var(--font-berkeley-mono)',
+              fontSize: 13,
+              fontWeight: 500,
             }}
           >
-            🧑‍💼
+            RA
           </div>
-          <div>
-            <div style={{
-              fontSize: '1rem',
-              fontWeight: 800,
-              letterSpacing: '-0.03em',
-              color: 'var(--text-primary)',
-            }}>
-              RecruitAI
-            </div>
-            <div style={{
-              fontSize: '0.62rem',
-              color: 'var(--text-muted)',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              fontWeight: 600,
-            }}>
-              AI-Powered Screening
+          <div style={{ minWidth: 0 }}>
+            <div style={{ color: 'var(--color-snow)', fontSize: 15, fontWeight: 510 }}>RecruitAI</div>
+            <div className="text-mono" style={{ color: 'var(--color-slate)', fontSize: 11, marginTop: 1 }}>
+              SCREENING.OS
             </div>
           </div>
         </div>
       </div>
 
-      {/* Quick actions */}
-      <div style={{ padding: '14px 12px 4px', display: 'flex', gap: 8 }}>
-        <button
-          onClick={startNewScreening}
-          style={{
-            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            padding: '9px 10px', borderRadius: 'var(--radius-md)', cursor: 'pointer',
-            background: 'linear-gradient(135deg, var(--accent-primary), #6B5BD4)',
-            border: '1px solid rgba(255,255,255,0.15)', color: '#fff',
-            fontSize: '0.74rem', fontWeight: 700, boxShadow: '0 4px 14px rgba(139,124,246,0.3)',
-          }}
-          title="Start a fresh screening"
-        >
-          <Plus size={14} /> New
+      <div style={{ padding: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <button className="btn btn-primary btn-sm" onClick={startNewScreening} title="Start a fresh screening">
+          <Plus size={14} /> New run
         </button>
-        <button
-          onClick={() => setShowHistory(true)}
-          style={{
-            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            padding: '9px 10px', borderRadius: 'var(--radius-md)', cursor: 'pointer',
-            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
-            color: 'var(--text-secondary)', fontSize: '0.74rem', fontWeight: 600,
-          }}
-          title="View past screenings"
-        >
+        <button className="btn btn-ghost btn-sm" onClick={() => setShowHistory(true)} title="View past screenings">
           <Clock size={14} /> History
         </button>
       </div>
 
-      {/* Step navigation */}
-      <nav style={{ flex: 1, padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {STEPS.map((step, idx) => {
-          const isActive = step.id === 5
-            ? showInterviewDrawer && currentStep === 4  // step 5 = active when interview drawer is open
-            : currentStep === step.id;
+      <nav style={{ flex: 1, padding: '8px 10px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {STEPS.map((step) => {
+          const isActive = step.id === 5 ? showInterviewDrawer && currentStep === 4 : currentStep === step.id;
           const done = isComplete(step.id);
-          // Step 5 is navigatable whenever ranked candidates exist
-          const canNavigate = step.id === 5
-            ? rankedCandidates.length > 0
-            : step.id <= currentStep || done;
+          const canNavigate = step.id === 5 ? rankedCandidates.length > 0 : step.id <= currentStep || done;
+          const Icon = step.Icon;
 
           return (
-            <React.Fragment key={step.id}>
-              <div
-                onClick={() => canNavigate && handleStepClick(step.id)}
+            <button
+              key={step.id}
+              onClick={() => canNavigate && handleStepClick(step.id)}
+              disabled={!canNavigate}
+              style={{
+                width: '100%',
+                display: 'grid',
+                gridTemplateColumns: '30px 1fr auto',
+                alignItems: 'center',
+                gap: 10,
+                padding: '10px 10px',
+                borderRadius: 6,
+                color: isActive ? 'var(--color-snow)' : done ? 'var(--color-mist)' : 'var(--color-fog)',
+                background: isActive ? 'rgba(94, 106, 210, 0.12)' : 'transparent',
+                border: isActive ? '1px solid rgba(94, 106, 210, 0.3)' : '1px solid transparent',
+                textAlign: 'left',
+                opacity: canNavigate ? 1 : 0.42,
+                transition: 'background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast)',
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive && canNavigate) {
+                  e.currentTarget.style.background = 'var(--bg-hover)';
+                  e.currentTarget.style.borderColor = 'var(--color-graphite)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.borderColor = 'transparent';
+                }
+              }}
+            >
+              <span
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '10px 12px',
-                  borderRadius: 'var(--radius-md)',
-                  cursor: canNavigate ? 'pointer' : 'default',
-                  position: 'relative',
-                  background: isActive
-                    ? 'rgba(139,124,246,0.12)'
-                    : 'transparent',
-                  border: isActive
-                    ? '1px solid rgba(139,124,246,0.25)'
-                    : '1px solid transparent',
-                  backdropFilter: isActive ? 'blur(12px)' : 'none',
-                  WebkitBackdropFilter: isActive ? 'blur(12px)' : 'none',
-                  boxShadow: isActive
-                    ? '0 4px 16px rgba(139,124,246,0.1)'
-                    : 'none',
-                  transition: 'all var(--transition-base)',
-                  opacity: canNavigate ? 1 : 0.3,
-                }}
-                onMouseEnter={(e) => {
-                  if (canNavigate && !isActive) {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                    e.currentTarget.style.border = '1px solid rgba(255,255,255,0.08)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.border = '1px solid transparent';
-                  }
+                  width: 30,
+                  height: 30,
+                  display: 'grid',
+                  placeItems: 'center',
+                  borderRadius: 6,
+                  background: done && !isActive ? 'rgba(39,166,68,0.1)' : 'var(--color-obsidian)',
+                  border: done && !isActive ? '1px solid rgba(39,166,68,0.26)' : '1px solid var(--color-graphite)',
+                  color: done && !isActive ? 'var(--color-emerald)' : isActive ? 'var(--color-indigo)' : 'var(--color-fog)',
                 }}
               >
-                {/* Icon bubble */}
-                <div
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 10,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    background: isActive
-                      ? 'linear-gradient(135deg, var(--accent-primary), #6B5BD4)'
-                      : done
-                      ? 'rgba(74,222,128,0.1)'
-                      : 'rgba(255,255,255,0.05)',
-                    border: isActive
-                      ? '1px solid rgba(255,255,255,0.2)'
-                      : done
-                      ? '1px solid rgba(74,222,128,0.2)'
-                      : '1px solid rgba(255,255,255,0.07)',
-                    boxShadow: isActive
-                      ? '0 4px 16px rgba(139,124,246,0.35), 0 1px 0 rgba(255,255,255,0.15) inset'
-                      : 'none',
-                    transition: 'all var(--transition-base)',
-                  }}
-                >
-                  {done && !isActive ? (
-                    <CheckCircle2 size={15} color="var(--accent-green)" />
-                  ) : (
-                    <step.Icon
-                      size={14}
-                      color={isActive ? '#fff' : done ? 'var(--accent-green)' : 'var(--text-muted)'}
-                    />
-                  )}
-                </div>
-
-                {/* Labels */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontSize: '0.82rem',
-                      fontWeight: isActive ? 700 : 500,
-                      color: isActive
-                        ? 'var(--text-primary)'
-                        : done
-                        ? 'var(--text-secondary)'
-                        : 'var(--text-muted)',
-                      letterSpacing: '-0.01em',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {step.label}
-                  </div>
-                  <div style={{
-                    fontSize: '0.65rem',
-                    color: 'var(--text-muted)',
-                    marginTop: 1,
-                  }}>
-                    {step.sub}
-                  </div>
-                </div>
-
-                {/* Step counter */}
-                <div
-                  style={{
-                    fontSize: '0.62rem',
-                    fontFamily: 'var(--font-mono)',
-                    color: isActive ? 'var(--accent-primary)' : 'var(--text-disabled)',
-                    fontWeight: 700,
-                    flexShrink: 0,
-                  }}
-                >
-                  {String(step.id).padStart(2, '0')}
-                </div>
-              </div>
-
-              {/* Connector dot */}
-              {idx < STEPS.length - 1 && (
-                <div style={{
-                  width: 2,
-                  height: 10,
-                  borderRadius: 1,
-                  background: done
-                    ? 'rgba(74,222,128,0.4)'
-                    : 'rgba(255,255,255,0.06)',
-                  marginLeft: 28,
-                  transition: 'background var(--transition-slow)',
-                }} />
-              )}
-            </React.Fragment>
+                {done && !isActive ? <CheckCircle2 size={14} /> : <Icon size={14} />}
+              </span>
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: isActive ? 510 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {step.label}
+                </span>
+                <span style={{ display: 'block', marginTop: 1, color: 'var(--color-slate)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {step.sub}
+                </span>
+              </span>
+              <span className="text-mono" style={{ color: isActive ? 'var(--color-indigo)' : 'var(--color-slate)', fontSize: 11 }}>
+                {String(step.id).padStart(2, '0')}
+              </span>
+            </button>
           );
         })}
       </nav>
 
-      {/* Footer — user + logout */}
-      <div style={{
-        padding: '16px 16px',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        display: 'flex', alignItems: 'center', gap: 10,
-      }}>
-        <div style={{
-          width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-          background: 'linear-gradient(135deg, var(--accent-primary), #6B5BD4)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#fff', fontWeight: 700, fontSize: '0.85rem',
-          border: '1px solid rgba(255,255,255,0.15)',
-        }}>
-          {(user?.name || user?.email || '?').charAt(0).toUpperCase()}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {user?.name || 'Recruiter'}
+      <div style={{ padding: 14, borderTop: '1px solid var(--color-graphite)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 999,
+              border: '1px solid var(--color-graphite)',
+              background: 'var(--color-obsidian)',
+              color: 'var(--color-mist)',
+              display: 'grid',
+              placeItems: 'center',
+              fontSize: 12,
+              fontWeight: 510,
+            }}
+          >
+            {(user?.name || user?.email || '?').charAt(0).toUpperCase()}
           </div>
-          <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {user?.email}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ color: 'var(--color-mist)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {user?.name || 'Recruiter'}
+            </div>
+            <div style={{ color: 'var(--color-slate)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {user?.email}
+            </div>
           </div>
+          <button className="btn btn-ghost btn-icon" onClick={logout} title="Sign out">
+            <LogOut size={14} />
+          </button>
         </div>
-        <button
-          onClick={logout}
-          title="Sign out"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 'var(--radius-md)', padding: 8, cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', flexShrink: 0 }}
-        >
-          <LogOut size={14} />
-        </button>
       </div>
     </aside>
   );

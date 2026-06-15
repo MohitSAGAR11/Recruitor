@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User, Loader2, ArrowRight } from 'lucide-react';
+import { ArrowRight, Lock, Mail, User, Loader2 } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore.js';
 
 export default function AuthScreen() {
   const { login, signup, authLoading, authError, clearAuthError } = useAuthStore();
-  const [mode, setMode] = useState('login'); // 'login' | 'signup'
+  const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -15,99 +15,110 @@ export default function AuthScreen() {
     else await signup(email.trim(), password, name.trim());
   };
 
-  const switchMode = (m) => { clearAuthError(); setMode(m); };
-
-  const inputWrap = {
-    display: 'flex', alignItems: 'center', gap: 10,
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 'var(--radius-md)', padding: '12px 14px',
-  };
-  const inputStyle = {
-    flex: 1, background: 'transparent', border: 'none', outline: 'none',
-    color: 'var(--text-primary)', fontSize: '0.9rem', fontFamily: 'var(--font-display)',
+  const switchMode = (nextMode) => {
+    clearAuthError();
+    setMode(nextMode);
   };
 
   return (
-    <div style={{
-      width: '100%', minHeight: '100vh', display: 'flex',
-      alignItems: 'center', justifyContent: 'center', padding: 24,
-    }}>
-      <div className="animate-fade-in" style={{
-        width: '100%', maxWidth: 420,
-        background: 'rgba(255,255,255,0.05)',
-        backdropFilter: 'blur(32px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(32px) saturate(180%)',
-        border: '1px solid rgba(255,255,255,0.14)',
-        borderRadius: 'var(--radius-xl)',
-        boxShadow: 'var(--glass-shadow-lg)',
-        padding: '36px 32px',
-      }}>
-        {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 13,
-            background: 'linear-gradient(135deg, #8B7CF6, #6B5BD4)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.3rem', boxShadow: '0 0 20px rgba(139,124,246,0.4)',
-            border: '1px solid rgba(255,255,255,0.15)',
-          }}>🧑‍💼</div>
+    <main
+      className="app-main"
+      style={{
+        minHeight: '100vh',
+        display: 'grid',
+        placeItems: 'center',
+        padding: 24,
+      }}
+    >
+      <section
+        className="animate-fade-in"
+        style={{
+          width: 'min(100%, 960px)',
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr) minmax(360px, 420px)',
+          gap: 24,
+          alignItems: 'stretch',
+        }}
+      >
+        <div className="panel" style={{ padding: 32, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 480 }}>
           <div>
-            <div style={{ fontSize: '1.15rem', fontWeight: 800, letterSpacing: '-0.03em' }}>RecruitAI</div>
-            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>
-              AI-Powered Screening
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 48 }}>
+              <div style={{ width: 34, height: 34, borderRadius: 6, background: 'var(--color-snow)', color: 'var(--color-onyx)', display: 'grid', placeItems: 'center', fontFamily: 'var(--font-berkeley-mono)', fontSize: 13, fontWeight: 500 }}>
+                RA
+              </div>
+              <div>
+                <p style={{ margin: 0, color: 'var(--color-snow)', fontSize: 15, fontWeight: 510 }}>RecruitAI</p>
+                <p className="text-mono" style={{ margin: '2px 0 0', color: 'var(--color-slate)', fontSize: 11 }}>SCREENING.OS</p>
+              </div>
+            </div>
+
+            <p className="eyebrow"><span className="eyebrow-dot" />AI hiring command deck</p>
+            <h1 className="text-display" style={{ maxWidth: 520 }}>Run structured candidate reviews without losing signal.</h1>
+            <p className="text-body" style={{ maxWidth: 560, marginTop: 16 }}>
+              Parse role briefs, intake CVs, score candidates, inspect bias signals, and generate interview guides in one dense workflow.
+            </p>
+          </div>
+
+          <div className="metric-grid" style={{ marginTop: 32 }}>
+            <div className="metric">
+              <p className="metric-label">Workflow</p>
+              <p className="metric-value">5 stages</p>
+            </div>
+            <div className="metric">
+              <p className="metric-label">Batch size</p>
+              <p className="metric-value">50 CVs</p>
+            </div>
+            <div className="metric">
+              <p className="metric-label">Output</p>
+              <p className="metric-value">Ranked kit</p>
             </div>
           </div>
         </div>
 
-        <h2 style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '-0.03em', marginTop: 22, marginBottom: 4 }}>
-          {mode === 'login' ? 'Welcome back' : 'Create your account'}
-        </h2>
-        <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: 24 }}>
-          {mode === 'login' ? 'Sign in to access your screenings.' : 'Save and revisit every screening you run.'}
-        </p>
+        <form onSubmit={submit} className="panel" style={{ padding: 28, alignSelf: 'center' }}>
+          <p className="eyebrow"><span className="eyebrow-dot" />{mode === 'login' ? 'Resume workspace' : 'Create workspace'}</p>
+          <h2 className="text-title" style={{ fontSize: 28, marginTop: 10 }}>
+            {mode === 'login' ? 'Welcome back' : 'Create account'}
+          </h2>
+          <p className="text-body" style={{ marginTop: 8, marginBottom: 24 }}>
+            {mode === 'login' ? 'Sign in to open saved screening runs.' : 'Save every review and interview guide.'}
+          </p>
 
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {mode === 'signup' && (
-            <div style={inputWrap}>
-              <User size={16} color="var(--text-muted)" />
-              <input style={inputStyle} placeholder="Full name (optional)" value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-          )}
-          <div style={inputWrap}>
-            <Mail size={16} color="var(--text-muted)" />
-            <input style={inputStyle} type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
-          </div>
-          <div style={inputWrap}>
-            <Lock size={16} color="var(--text-muted)" />
-            <input style={inputStyle} type="password" placeholder="Password (min 6 chars)" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
+          <div style={{ display: 'grid', gap: 12 }}>
+            {mode === 'signup' && (
+              <label className="surface-row" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 12px' }}>
+                <User size={15} color="var(--color-fog)" />
+                <input className="input" style={{ boxShadow: 'none', background: 'transparent', paddingLeft: 0 }} placeholder="Full name (optional)" value={name} onChange={(e) => setName(e.target.value)} />
+              </label>
+            )}
+            <label className="surface-row" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 12px' }}>
+              <Mail size={15} color="var(--color-fog)" />
+              <input className="input" style={{ boxShadow: 'none', background: 'transparent', paddingLeft: 0 }} type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+            </label>
+            <label className="surface-row" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 12px' }}>
+              <Lock size={15} color="var(--color-fog)" />
+              <input className="input" style={{ boxShadow: 'none', background: 'transparent', paddingLeft: 0 }} type="password" placeholder="Password (min 6 chars)" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
+            </label>
           </div>
 
           {authError && (
-            <div style={{
-              fontSize: '0.78rem', color: 'var(--accent-red)',
-              background: 'var(--accent-red-dim)', border: '1px solid rgba(255,107,107,0.2)',
-              borderRadius: 'var(--radius-sm)', padding: '9px 12px',
-            }}>
+            <div className="surface-row" style={{ marginTop: 12, padding: 12, color: 'var(--color-crimson)', background: 'rgba(235,87,87,0.08)', borderColor: 'rgba(235,87,87,0.28)', fontSize: 13 }}>
               {authError}
             </div>
           )}
 
-          <button type="submit" className="btn btn-primary w-full" disabled={authLoading}
-            style={{ justifyContent: 'center', gap: 8, marginTop: 6, padding: '12px' }}>
-            {authLoading ? <><Loader2 size={16} className="animate-spin" /> Please wait…</>
-              : <>{mode === 'login' ? 'Sign in' : 'Create account'} <ArrowRight size={16} /></>}
+          <button type="submit" className="btn btn-primary w-full" disabled={authLoading} style={{ marginTop: 18 }}>
+            {authLoading ? <><Loader2 size={15} className="animate-spin" /> Please wait...</> : <>{mode === 'login' ? 'Sign in' : 'Create account'} <ArrowRight size={15} /></>}
           </button>
-        </form>
 
-        <div style={{ marginTop: 20, textAlign: 'center', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-          {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-          <button onClick={() => switchMode(mode === 'login' ? 'signup' : 'login')}
-            style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}>
-            {mode === 'login' ? 'Sign up' : 'Sign in'}
-          </button>
-        </div>
-      </div>
-    </div>
+          <div style={{ marginTop: 18, color: 'var(--color-fog)', fontSize: 13, textAlign: 'center' }}>
+            {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+            <button type="button" onClick={() => switchMode(mode === 'login' ? 'signup' : 'login')} style={{ color: 'var(--color-indigo)', background: 'transparent', fontWeight: 510 }}>
+              {mode === 'login' ? 'Sign up' : 'Sign in'}
+            </button>
+          </div>
+        </form>
+      </section>
+    </main>
   );
 }

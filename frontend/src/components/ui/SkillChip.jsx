@@ -1,71 +1,30 @@
 import React from 'react';
 
-/**
- * Skill tag chip.
- * Props: label, variant ('filled'|'outline'|'matched'|'missing'), size ('sm'|'md')
- */
 export default function SkillChip({ label, variant = 'filled', size = 'sm', onClick }) {
   const styles = {
-    filled: {
-      background: 'var(--accent-primary-dim)',
-      color: 'var(--accent-primary)',
-      border: '1px solid rgba(123,111,232,0.25)',
-    },
-    outline: {
-      background: 'transparent',
-      color: 'var(--text-secondary)',
-      border: '1px solid var(--border-strong)',
-    },
-    matched: {
-      background: 'var(--accent-green-dim)',
-      color: 'var(--accent-green)',
-      border: '1px solid rgba(74,201,126,0.25)',
-    },
-    missing: {
-      background: 'var(--accent-red-dim)',
-      color: 'var(--accent-red)',
-      border: '1px solid rgba(232,85,85,0.25)',
-    },
-    teal: {
-      background: 'var(--accent-teal-dim)',
-      color: 'var(--accent-teal)',
-      border: '1px solid rgba(61,217,195,0.25)',
-    },
-    amber: {
-      background: 'var(--accent-amber-dim)',
-      color: 'var(--accent-amber)',
-      border: '1px solid rgba(245,166,35,0.25)',
-    },
-    muted: {
-      background: 'var(--bg-elevated)',
-      color: 'var(--text-muted)',
-      border: '1px solid var(--border-subtle)',
-    },
+    filled: { color: 'var(--color-mist)', background: 'rgba(94,106,210,0.12)', borderColor: 'rgba(94,106,210,0.28)' },
+    outline: { color: 'var(--color-fog)', background: 'transparent', borderColor: 'var(--color-graphite)' },
+    matched: { color: 'var(--color-emerald)', background: 'rgba(39,166,68,0.1)', borderColor: 'rgba(39,166,68,0.28)' },
+    missing: { color: 'var(--color-crimson)', background: 'rgba(235,87,87,0.1)', borderColor: 'rgba(235,87,87,0.28)' },
+    teal: { color: 'var(--color-cyan)', background: 'rgba(2,184,204,0.1)', borderColor: 'rgba(2,184,204,0.28)' },
+    amber: { color: 'var(--accent-amber)', background: 'var(--accent-amber-dim)', borderColor: 'rgba(214,166,58,0.28)' },
+    muted: { color: 'var(--color-fog)', background: 'var(--color-obsidian)', borderColor: 'var(--color-graphite)' },
   };
-
-  const padding = size === 'sm' ? '2px 8px' : '4px 12px';
-  const fontSize = size === 'sm' ? '0.7rem' : '0.8rem';
+  const style = styles[variant] || styles.filled;
 
   return (
     <span
+      className="chip"
       onClick={onClick}
       style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        padding,
-        borderRadius: 100,
-        fontSize,
-        fontWeight: 600,
-        letterSpacing: '0.01em',
-        whiteSpace: 'nowrap',
+        padding: size === 'sm' ? '3px 7px' : '5px 10px',
+        fontSize: size === 'sm' ? 11 : 12,
         cursor: onClick ? 'pointer' : 'default',
-        transition: 'opacity 150ms ease',
-        ...styles[variant] || styles.filled,
+        ...style,
       }}
     >
-      {variant === 'matched' && '✓ '}
-      {variant === 'missing' && '✗ '}
+      {variant === 'matched' && <span className="status-dot" />}
+      {variant === 'missing' && <span className="status-dot" />}
       {label}
     </span>
   );

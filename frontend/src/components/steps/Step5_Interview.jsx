@@ -1,366 +1,131 @@
-import React, { useState } from "react";
-import { X, Copy, Check, BookOpen } from "lucide-react";
-import useRecruitStore from "../../store/useRecruitStore.js";
+import React, { useState } from 'react';
+import { BookOpen, Check, Copy, X } from 'lucide-react';
+import useRecruitStore from '../../store/useRecruitStore.js';
 
 const TABS = [
-  { id: "technical", label: "Technical", key: "technicalQuestions" },
-  { id: "behavioral", label: "Behavioral", key: "behavioralQuestions" },
-  { id: "gap", label: "Gap Probing", key: "gapProbingQuestions" },
-  { id: "culture", label: "Culture", key: "cultureQuestions" },
+  { id: 'technical', label: 'Technical', key: 'technicalQuestions' },
+  { id: 'behavioral', label: 'Behavioral', key: 'behavioralQuestions' },
+  { id: 'gap', label: 'Gap probing', key: 'gapProbingQuestions' },
+  { id: 'culture', label: 'Culture', key: 'cultureQuestions' },
 ];
 
-const DIFFICULTY_COLOR = {
-  easy: "var(--accent-green)",
-  medium: "var(--accent-amber)",
-  hard: "var(--accent-red)",
+const DIFFICULTY_CLASS = {
+  easy: 'badge-green',
+  medium: 'badge-amber',
+  hard: 'badge-red',
 };
 
-function QuestionCard({ q, index }) {
+function QuestionCard({ question, index }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(q.question);
+    navigator.clipboard.writeText(question.question);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 1800);
   };
 
   return (
-    <div
-      className="animate-fade-in"
-      style={{
-        background: "rgba(255,255,255,0.04)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: "var(--radius-md)",
-        padding: "16px",
-        marginBottom: 10,
-        transition: "border-color var(--transition-fast)",
-      }}
-      onMouseEnter={(e) =>
-        (e.currentTarget.style.borderColor = "rgba(255,255,255,0.14)")
-      }
-      onMouseLeave={(e) =>
-        (e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)")
-      }
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 10,
-          marginBottom: 10,
-        }}
-      >
-        <span
-          style={{
-            fontSize: "0.66rem",
-            fontFamily: "var(--font-mono)",
-            fontWeight: 700,
-            color: "var(--text-muted)",
-            flexShrink: 0,
-            marginTop: 3,
-            background: "rgba(255,255,255,0.06)",
-            padding: "2px 6px",
-            borderRadius: 4,
-          }}
-        >
-          Q{index + 1}
-        </span>
-        <p
-          style={{
-            fontSize: "0.88rem",
-            fontWeight: 500,
-            color: "var(--text-primary)",
-            lineHeight: 1.65,
-            flex: 1,
-          }}
-        >
-          {q.question}
-        </p>
-        <button
-          onClick={handleCopy}
-          style={{
-            color: copied ? "var(--accent-green)" : "var(--text-muted)",
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: 6,
-            padding: "5px 6px",
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            transition: "all var(--transition-fast)",
-          }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.background = "rgba(255,255,255,0.1)")
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.background = "rgba(255,255,255,0.05)")
-          }
-          title="Copy question"
-        >
-          {copied ? <Check size={13} /> : <Copy size={13} />}
+    <article className="surface-row animate-fade-in" style={{ padding: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr auto', gap: 10, alignItems: 'start' }}>
+        <span className="text-mono" style={{ color: 'var(--color-slate)', fontSize: 12 }}>Q{index + 1}</span>
+        <p style={{ margin: 0, color: 'var(--color-snow)', fontSize: 14, lineHeight: 1.6 }}>{question.question}</p>
+        <button className="btn btn-ghost btn-icon" onClick={handleCopy} title="Copy question">
+          {copied ? <Check size={14} color="var(--color-emerald)" /> : <Copy size={14} />}
         </button>
       </div>
-
-      {q.rationale && (
-        <p
-          style={{
-            fontSize: "0.75rem",
-            color: "var(--text-muted)",
-            lineHeight: 1.55,
-            marginBottom: 10,
-            paddingLeft: 28,
-            fontStyle: "italic",
-          }}
-        >
-          ↳ {q.rationale}
-        </p>
+      {question.rationale && (
+        <p className="text-body" style={{ fontSize: 13, margin: '10px 0 0 46px' }}>{question.rationale}</p>
       )}
-
-      <div
-        style={{ display: "flex", gap: 6, flexWrap: "wrap", paddingLeft: 28 }}
-      >
-        {q.difficulty && (
-          <span
-            className="badge"
-            style={{
-              background: `${DIFFICULTY_COLOR[q.difficulty]}18`,
-              color: DIFFICULTY_COLOR[q.difficulty],
-              border: `1px solid ${DIFFICULTY_COLOR[q.difficulty]}30`,
-            }}
-          >
-            {q.difficulty}
-          </span>
-        )}
-        {q.competency && (
-          <span className="badge badge-primary">{q.competency}</span>
-        )}
-        {q.gap && <span className="badge badge-amber">Gap: {q.gap}</span>}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '12px 0 0 46px' }}>
+        {question.difficulty && <span className={`badge ${DIFFICULTY_CLASS[question.difficulty] || 'badge-muted'}`}>{question.difficulty}</span>}
+        {question.competency && <span className="badge badge-primary">{question.competency}</span>}
+        {question.gap && <span className="badge badge-amber">Gap: {question.gap}</span>}
       </div>
-    </div>
+    </article>
   );
 }
 
 export default function Step5_Interview() {
-  const { activeInterviewCandidate, interviewQuestions, closeInterviewDrawer } =
-    useRecruitStore();
-  const [activeTab, setActiveTab] = useState("technical");
+  const { activeInterviewCandidate, interviewQuestions, closeInterviewDrawer } = useRecruitStore();
+  const [activeTab, setActiveTab] = useState('technical');
   const [allCopied, setAllCopied] = useState(false);
 
   if (!activeInterviewCandidate) return null;
 
-  const name =
-    activeInterviewCandidate.name ||
-    activeInterviewCandidate.parsed?.name ||
-    "Candidate";
+  const name = activeInterviewCandidate.name || activeInterviewCandidate.parsed?.name || 'Candidate';
   const questions = interviewQuestions[name] || {};
-  const activeKey = TABS.find((t) => t.id === activeTab)?.key;
+  const activeKey = TABS.find((tab) => tab.id === activeTab)?.key;
   const activeQuestions = questions[activeKey] || [];
 
   const handleCopyAll = () => {
-    const allText = TABS.flatMap((tab) =>
-      (questions[tab.key] || []).map(
-        (q, i) => `[${tab.label}] Q${i + 1}: ${q.question}`,
-      ),
-    ).join("\n\n");
-
-    navigator.clipboard.writeText(
-      `Interview Guide for ${name}\n${"=".repeat(40)}\n\n${allText}`,
-    );
+    const allText = TABS.flatMap((tab) => (questions[tab.key] || []).map((question, i) => `[${tab.label}] Q${i + 1}: ${question.question}`)).join('\n\n');
+    navigator.clipboard.writeText(`Interview Guide for ${name}\n${'='.repeat(40)}\n\n${allText}`);
     setAllCopied(true);
-    setTimeout(() => setAllCopied(false), 2500);
+    setTimeout(() => setAllCopied(false), 2200);
   };
 
   return (
     <>
-      {/* Backdrop */}
-      <div
-        onClick={closeInterviewDrawer}
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(6,6,15,0.7)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-          zIndex: 200,
-        }}
-      />
-
-      {/* Drawer */}
-      <div
+      <div onClick={closeInterviewDrawer} style={{ position: 'fixed', inset: 0, background: 'rgba(8,9,10,0.74)', zIndex: 200 }} />
+      <aside
         className="animate-slide-in-right"
         style={{
-          position: "fixed",
+          position: 'fixed',
           top: 0,
           right: 0,
-          width: 500,
-          height: "100vh",
-          background: "rgba(14,14,26,0.9)",
-          backdropFilter: "blur(40px)",
-          WebkitBackdropFilter: "blur(40px)",
-          borderLeft: "1px solid rgba(255,255,255,0.1)",
-          display: "flex",
-          flexDirection: "column",
+          width: 'min(540px, 100vw)',
+          height: '100vh',
+          background: 'var(--color-charcoal)',
+          borderLeft: '1px solid var(--color-graphite)',
+          boxShadow: 'var(--shadow-xl)',
           zIndex: 300,
-          boxShadow: "-20px 0 60px rgba(0,0,0,0.6)",
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
-        {/* Header */}
-        <div
-          style={{
-            padding: "22px 20px 18px",
-            borderBottom: "1px solid rgba(255,255,255,0.07)",
-            flexShrink: 0,
-            background: "rgba(255,255,255,0.02)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginBottom: 6,
-            }}
-          >
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 9,
-                background: "rgba(139,124,246,0.15)",
-                border: "1px solid rgba(139,124,246,0.25)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <BookOpen size={15} color="var(--accent-primary)" />
+        <header style={{ padding: 18, borderBottom: '1px solid var(--color-graphite)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 6, background: 'rgba(94,106,210,0.12)', border: '1px solid rgba(94,106,210,0.28)', color: 'var(--color-indigo)', display: 'grid', placeItems: 'center' }}>
+              <BookOpen size={16} />
             </div>
-            <h2 style={{ fontSize: "1rem", fontWeight: 700, flex: 1 }}>
-              Interview Guide
-            </h2>
-            <button
-              onClick={closeInterviewDrawer}
-              style={{
-                color: "var(--text-muted)",
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 8,
-                padding: "5px 6px",
-                display: "flex",
-                alignItems: "center",
-                transition: "all var(--transition-fast)",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.background = "rgba(255,255,255,0.1)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.background = "rgba(255,255,255,0.05)")
-              }
-            >
-              <X size={16} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p className="text-heading">Interview guide</p>
+              <p style={{ margin: '2px 0 0', color: 'var(--color-fog)', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</p>
+            </div>
+            <button className="btn btn-ghost btn-icon" onClick={closeInterviewDrawer} title="Close interview guide">
+              <X size={15} />
             </button>
           </div>
-          <p
-            style={{
-              fontSize: "0.82rem",
-              color: "var(--accent-primary)",
-              fontWeight: 600,
-              letterSpacing: "-0.01em",
-            }}
-          >
-            {name}
-          </p>
-        </div>
+        </header>
 
-        {/* Tabs */}
-        <div
-          style={{
-            display: "flex",
-            borderBottom: "1px solid rgba(255,255,255,0.07)",
-            padding: "0 12px",
-            flexShrink: 0,
-          }}
-        >
+        <div className="tab-row" style={{ padding: '0 12px', flexShrink: 0, overflowX: 'auto' }}>
           {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                padding: "10px 12px",
-                fontSize: "0.78rem",
-                fontWeight: 600,
-                color:
-                  activeTab === tab.id
-                    ? "var(--accent-primary)"
-                    : "var(--text-muted)",
-                background: "none",
-                borderBottom:
-                  activeTab === tab.id
-                    ? "2px solid var(--accent-primary)"
-                    : "2px solid transparent",
-                transition: "all var(--transition-fast)",
-                letterSpacing: "-0.01em",
-              }}
-            >
+            <button key={tab.id} className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)}>
               {tab.label}
             </button>
           ))}
         </div>
 
-        {/* Questions */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 8px" }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'grid', gap: 10, alignContent: 'start' }}>
           {activeQuestions.length === 0 ? (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                height: "60%",
-                gap: 12,
-                color: "var(--text-muted)",
-              }}
-            >
-              <div style={{ fontSize: "2rem", opacity: 0.4 }}>📭</div>
-              <p style={{ fontSize: "0.85rem" }}>
-                No questions in this category.
-              </p>
+            <div className="empty-state">
+              <BookOpen size={28} />
+              <div>
+                <p className="text-heading">No questions here</p>
+                <p className="text-body" style={{ fontSize: 13, marginTop: 4 }}>Try another interview category.</p>
+              </div>
             </div>
           ) : (
-            activeQuestions.map((q, i) => (
-              <QuestionCard key={i} q={q} index={i} />
-            ))
+            activeQuestions.map((question, index) => <QuestionCard key={index} question={question} index={index} />)
           )}
         </div>
 
-        {/* Footer */}
-        <div
-          style={{
-            padding: "14px 16px",
-            borderTop: "1px solid rgba(255,255,255,0.07)",
-            flexShrink: 0,
-            background: "rgba(255,255,255,0.02)",
-          }}
-        >
-          <button
-            className="btn btn-ghost w-full"
-            style={{ justifyContent: "center", gap: 8 }}
-            onClick={handleCopyAll}
-          >
-            {allCopied ? (
-              <>
-                <Check size={14} color="var(--accent-green)" /> Copied!
-              </>
-            ) : (
-              <>
-                <Copy size={14} /> Copy All Questions
-              </>
-            )}
+        <footer style={{ padding: 14, borderTop: '1px solid var(--color-graphite)' }}>
+          <button className="btn btn-ghost w-full" onClick={handleCopyAll}>
+            {allCopied ? <><Check size={14} color="var(--color-emerald)" /> Copied</> : <><Copy size={14} /> Copy all questions</>}
           </button>
-        </div>
-      </div>
+        </footer>
+      </aside>
     </>
   );
 }

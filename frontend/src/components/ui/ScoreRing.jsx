@@ -1,10 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 
 function getColor(score) {
-  if (score >= 80) return 'var(--accent-teal)';
-  if (score >= 60) return 'var(--accent-primary)';
+  if (score >= 80) return 'var(--color-emerald)';
+  if (score >= 60) return 'var(--color-indigo)';
   if (score >= 40) return 'var(--accent-amber)';
-  return 'var(--accent-red)';
+  return 'var(--color-crimson)';
 }
 
 /**
@@ -50,7 +50,6 @@ export default function ScoreRing({
       style={{ flexShrink: 0 }}
       aria-label={`Score: ${score} out of 100`}
     >
-      {/* Drop shadow filter */}
       <defs>
         <filter id={`glow-${score}-${size}`} x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="2" result="blur" />
@@ -61,17 +60,15 @@ export default function ScoreRing({
         </filter>
       </defs>
 
-      {/* Background track */}
       <circle
         cx={cx}
         cy={cy}
         r={radius}
         fill="none"
-        stroke="var(--border-default)"
+        stroke="var(--color-graphite)"
         strokeWidth={strokeWidth}
       />
 
-      {/* Progress arc */}
       <circle
         ref={circleRef}
         cx={cx}
@@ -85,12 +82,10 @@ export default function ScoreRing({
         strokeDashoffset={animate ? circumference : offset}
         transform={`rotate(-90 ${cx} ${cy})`}
         style={{
-          filter: `drop-shadow(0 0 4px ${color}80)`,
           transition: animate ? undefined : 'none',
         }}
       />
 
-      {/* Score label */}
       {showLabel && (
         <text
           x={cx}

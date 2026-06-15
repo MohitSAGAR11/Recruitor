@@ -22,15 +22,12 @@ export default function App() {
   const { currentStep, loading, loadingMessage, toasts, removeToast, showHistory } = useRecruitStore();
   const { user, authReady, init } = useAuthStore();
 
-  // On boot, restore any existing login session
   useEffect(() => { init(); }, [init]);
 
-  // While checking for an existing session, render nothing (avoids auth flash)
   if (!authReady) {
-    return <div style={{ width: '100%', height: '100vh' }} />;
+    return <div className="app-main" style={{ minHeight: '100vh' }} />;
   }
 
-  // Not logged in → show the auth screen
   if (!user) {
     return (
       <>
@@ -44,35 +41,27 @@ export default function App() {
   const isFullHeight = currentStep === 4;
 
   return (
-    <div style={{ display: 'flex', width: '100%', height: '100vh', overflow: 'hidden' }}>
-      {/* Fixed Sidebar */}
+    <div className="app-shell">
       <Sidebar />
 
-      {/* Main content area */}
       <main
+        className="app-main"
         style={{
-          flex: 1,
-          overflow: isFullHeight ? 'hidden' : 'auto',
-          background: 'var(--bg-base)',
-          position: 'relative',
           display: 'flex',
           flexDirection: 'column',
+          height: '100vh',
+          overflow: isFullHeight ? 'hidden' : 'auto',
+          position: 'relative',
         }}
       >
         <StepComponent />
       </main>
 
-      {/* History panel (slide-over) */}
       {showHistory && <HistoryPanel />}
-
-      {/* Loading overlay (global — only for non-scoring operations) */}
       {loading && currentStep !== 3 && (
-        <LoadingOverlay message={loadingMessage || 'Processing…'} />
+        <LoadingOverlay message={loadingMessage || 'Processing...'} />
       )}
-
-      {/* Toast notifications */}
       <Toast toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }
-
